@@ -24,7 +24,7 @@ logger.addHandler(file_handler)
 def test():
     cntr = 0
     try:
-        sch = HourlySchedule2days()
+        sch = HourlySchedule2days("Test schedule")
         sch.add_to_device_list(cb1)
         sch.set_schedule_hour_off_on(today_tomorrow=True, hour=12, cmd=True)
         sch.set_schedule_hour_off_on(today_tomorrow=True, hour=1, cmd=True)
@@ -134,10 +134,14 @@ class HourlySchedule2days:
         if actual_today == self.datetime_now:
             # date has not changed
             return
+        # new day
         self.datetime_now = actual_today
-        # next dat, move tomorrows schedule in today
+        self.move_tomorrow_in_today()
+
+    def move_tomorrow_in_today(self):
+        # next day, move tomorrows schedule in today
         self.schedule_today.update(self.schedule_tomorrow)
-        # set tomorrows schedule allto false
+        # set tomorrows schedule all to false
         self.schedule_tomorrow = {key: False for key in self.schedule_tomorrow}
 
 

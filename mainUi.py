@@ -13,14 +13,18 @@ TODO: Use listener design pattern
 
 import os
 import time
+import subprocess
 from tkinter import Tk, Label, Button, StringVar, IntVar, Entry, Frame, Checkbutton, BooleanVar
 import logging
 from functools import partial
 from devices.shellyPlugMqtt import ShellyPlug
 from mqtt_client import MyMqttClient
 from price_file_manager import PriceFileManager
-from custom_tk_widgets import DeviceWidget, ShellyPlugWidget, Schedule2DaysWidget
+from custom_tk_widgets.shelly_plug_widget import ShellyPlugWidget
+from custom_tk_widgets.schedule_2_days_widget import Schedule2DaysWidget
+from custom_tk_widgets.hourly_schedule_creator_widget import HourlyScheduleCreatorWidget
 from schedules.hourly_schedule import HourlySchedule2days
+from schedules.schedule_creator import ScheduleCreator
 import secrets
 
 # Setup logging
@@ -50,11 +54,13 @@ class MainUIClass(Tk):
     # In how many mainloops should the device widgets be updated
     MAINLOOP_UPDATE_DEVICE_WIDGETS_MULTIPLIER = 5
     # In how many mainloops should the mqtt broker status be updated
-    MAINLOOP_UPDATE_MQTT_CLIENT_MULTIPLIER = 5
+    MAINLOOP_UPDATE_MQTT_CLIENT_MULTIPLIER = 4
     # In how many mainloops should the device_loops_be_called
-    MAINLOOP_CALL_DEVICE_LOOPS_MULTIPLIER = 5
+    MAINLOOP_CALL_DEVICE_LOOPS_MULTIPLIER = 6
     # In how many mainloops should the schedule loops be called
-    MAINLOOP_CALL_SCHEDULE_LOOPS_MULTIPLIER = 10
+    MAINLOOP_CALL_SCHEDULE_LOOPS_MULTIPLIER = 7
+    # In how many mainloops should the price_mngr_be_called
+    MAINLOOP_CALL_FILE_MNGR_LOOPS_MULTIPLIER = 51
     # UI constants
     BTN_WIDTH = 60
     HOUR_WIDTH = 6
@@ -70,13 +76,14 @@ class MainUIClass(Tk):
         logger.info("Program started")
         # Variables that determine how often certain functions are called
         self.mainloop_cntr_widgets, self.mainloop_cntr_mqtt, self.mainloop_cntr_device_loops, \
-            self.mainloop_cntr_schedule_loops = 0, 0, 0, 0
+            self.mainloop_cntr_schedule_loops, self.mainloop_cntr_price_mngr_loops = 0, 0, 0, 0, 0
         self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
                                         psw=secrets.MQTT_PSW)
         self.mqtt_client.start()
         self.setup_devices()
         self.setup_schedules()
         self.set_up_ui()
+        self.price_mngr = PriceFileManager(self.PRICE_FILE_LOCATION, self.populate_ui_with_el_prices)
         self.mainloop()
 
     def mainloop_user(self):
@@ -84,9 +91,15 @@ class MainUIClass(Tk):
         self.update_mqtt_status()
         self.call_schedule_loops()
         self.call_device_loops()
+        self.price_manager_loop()
         # Start the loop again after delay
         self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)
 
+    def price_manager_loop(self):
+        self.mainloop_cntr_price_mngr_loops += 1
+        if self.mainloop_cntr_price_mngr_loops == self.MAINLOOP_CALL_FILE_MNGR_LOOPS_MULTIPLIER:
+            self.mainloop_cntr_price_mngr_loops = 0
+            self.price_mngr.loop()
 
     def call_schedule_loops(self):
         self.mainloop_cntr_schedule_loops += 1
@@ -110,7 +123,6 @@ class MainUIClass(Tk):
             self.mainloop_cntr_mqtt = 0
             new_text = self.mqtt_client.status_strings.get(self.mqtt_client.status, "UNKNOWN")
             self.lbl_status.config(text=new_text)
-
 
     def update_device_widgets(self):
         """
@@ -144,14 +156,9 @@ class MainUIClass(Tk):
         self.prepare_ui_elements()
         self.place_ui_elements()
         self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)
-        self.populate_ui_with_el_prices()
 
-
-    def populate_ui_with_el_prices(self):
-        "Get electrical price data and set it in the user interface"
-        mngr = PriceFileManager(self.PRICE_FILE_LOCATION)
-        prices_today, prices_tomorrow = {}, {}
-        prices_today, prices_tomorrow = mngr.get_prices_today_tomorrow()
+    def populate_ui_with_el_prices(self, prices_today: dict, prices_tomorrow: dict):
+        "Set electrical price data in the user interface"
         price_list_today, price_list_tomorrow = [self.DUMMY_PRICE_VALUE] * 24, [self.DUMMY_PRICE_VALUE] * 24
         for hour, value in prices_today.items():
             price_list_today[hour] = value
@@ -169,6 +176,17 @@ class MainUIClass(Tk):
         self.btn_2 = Button(self.frame_extra_btns, text='TEST 2', command=self.test_btn_2, width=self.BTN_WIDTH)
         self.plug_widget = ShellyPlugWidget(parent=self, device=self.plug)
         self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_test)
+        create_schedule_callback = lambda max_total, hours_ahead, max_h, min_h: self.create_schedule(max_total,
+                                                                                                     hours_ahead, max_h, min_h)
+        self.schedule_creator_widget = HourlyScheduleCreatorWidget(parent=self, fc_to_call=create_schedule_callback)
+
+    def create_schedule(self, max_total: float, hours_ahead: int, max_h: int, min_h: int):
+        # TODO: continue here
+        prices_today, prices_tomorrow = self.price_mngr.get_prices_today_tomorrow()
+        schedule_today, schedule_tomorrow = ScheduleCreator.get_schedule_from_prices(prices_today, prices_tomorrow)
+        self.schedule_test.set_schedule_full_day(today_tomorrow=False, schedule=schedule_today)
+        self.schedule_test.set_schedule_full_day(today_tomorrow=True, schedule=schedule_tomorrow)
+
 
     def place_ui_elements(self):
         """
@@ -182,9 +200,11 @@ class MainUIClass(Tk):
         self.frame_extra_btns.grid(row=1, column=0)
         self.plug_widget.grid(row=2, column=0)
         self.schedule_widget.grid(row=3, column=0)
+        self.schedule_creator_widget.grid(row=4, column=0)
 
     def checkbox_value_changed(self, nr: int, day: int):
         """
+        TODO: delete, moved to widget code?
         Called every time one of the checkboxes pressed
         :param day: today or tomorrow
         :param nr: checkbox representing which hour in that day
@@ -200,7 +220,7 @@ class MainUIClass(Tk):
             logger.error("Unknown day key")
 
     def test_btn_1(self):
-        self.populate_ui_with_el_prices()
+        subprocess.Popen(['explorer', self.PRICE_FILE_LOCATION])
 
     def test_btn_2(self):
         logger.info("Inverting plug cmd")

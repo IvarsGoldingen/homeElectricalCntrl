@@ -3,7 +3,7 @@ from datetime import date
 import math
 import logging
 import requests
-from nordpool import elspot
+from nordpool import elspot, elbas
 from typing import List, Dict, Tuple
 import os
 
@@ -21,6 +21,10 @@ file_handler = logging.FileHandler(os.path.join("logs", "nordpool.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
+
+
+def test():
+    NordpoolGetter.get_tomorrow_price_list()
 
 
 class NordpoolGetter:
@@ -53,3 +57,7 @@ class NordpoolGetter:
         logger.info(f'Read data from Nordpool for {date_of_prices}:')
         logger.info(f'{list_of_prices}')
         return list_of_prices, date_of_prices
+
+
+if __name__ == '__main__':
+    test()

@@ -1,7 +1,10 @@
 import os
 import datetime
 import logging
+import time
+
 from get_nordpool import NordpoolGetter
+from typing import Callable
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -25,7 +28,7 @@ def test():
     # date = datetime.date.today() + datetime.timedelta(days=3)
     # list_of_prices, date_of_prices = NordpoolGetter.get_price_list()
     mngr = PriceFileManager(test_loc)
-    #mngr.create_files_from_nordpool_price_list(random_real_list, date)
+    # mngr.create_files_from_nordpool_price_list(random_real_list, date)
     # mngr.delete_old_incorrect_price_files()
     prices_today, prices_tomorrow = mngr.get_prices_today_tomorrow()
     print("Today")
@@ -35,20 +38,67 @@ def test():
     for hour, price in prices_tomorrow.items():
         print(f"{hour}\t{price}")
 
-
 class PriceFileManager:
     PRICE_FILE_EXTENSION = ".prc"
     NORDPOOL_PRICE_OFSET_HOURS = 1
+    # Time at which tomorrow's NP prices expected to be available
+    TOMORROW_AVAILABLE_EARLIEST_HOUR = 15
+    TOMORROW_AVAILABLE_EARLIEST_MINUTE = 55
+    # To limit how often np gets polled
+    MIN_NP_POLL_TIME_SEC = 900  # 900 = 15 min
 
-    def __init__(self, file_loc: str):
+    def __init__(self, file_loc: str, callback: Callable[[dict, dict], None]):
         self.file_loc = file_loc
+        self.datetime_now = None
+        self.tomorrow_prices_available = False
+        # For limitting np polls
+        self.time_of_last_np_poll = 0
+        self.update_prices_cb = callback
+        self.check_for_tomorrows_prices()
+        self.check_if_new_day()
+
+    def loop(self):
+        """
+        Call periodically to automatically retrieve tomorrow prices from Nordpool
+        And to call a callback function if there is one
+        :return:
+        """
+        self.check_if_new_day()
+        self.check_for_tomorrows_prices()
+
+    def check_if_new_day(self):
+        """
+        On new day move tomorrows schedule to today, and clear it
+        """
+        actual_today = datetime.date.today()
+        if actual_today == self.datetime_now:
+            # date has not changed
+            return
+        if self.datetime_now:
+            logger.debug("New day, tomorrows prices cannot be available")
+            # Tomorrows prices can not be available since new day just now
+            # Check if datetime_now is not None, that would mean first cycle
+            self.tomorrow_prices_available = False
+        else:
+            logger.debug("First cycle")
+        # new day
+        self.delete_old_incorrect_price_files()
+        self.datetime_now = actual_today
+        self.call_callback_with_price_data()
+
+    def call_callback_with_price_data(self):
+        if self.update_prices_cb:
+            logger.debug("Calling callback with prices")
+            prices_today, prices_tomorrow = self.get_prices_today_tomorrow()
+            self.update_prices_cb(prices_today, prices_tomorrow)
+        else:
+            logger.debug("Callback does not exist")
 
     def get_prices_today_tomorrow(self) -> [dict, dict]:
         """
         today and tomorrow prices are the prices in the dictionary
         :return:
         """
-        self.delete_old_incorrect_price_files()
         # For today just try to read the file, if it does not exist there will be an empty dict
         date_today = datetime.date.today()
         prices_today = self.read_prices_file_into_dict(self.create_date_file_path(date_today))
@@ -62,15 +112,71 @@ class PriceFileManager:
     def get_prices_tomorrow_from_file(self) -> dict:
         date_tomorrow = datetime.date.today() + datetime.timedelta(days=1)
         prices_tomorrow = self.read_prices_file_into_dict(self.create_date_file_path(date_tomorrow))
-        if len(prices_tomorrow) < (24 - self.NORDPOOL_PRICE_OFSET_HOURS):
-            logger.debug("Tomorrow prices not in files, attempting getting them from nordpool")
-            # tomorrows file does not have all values, attempt to get them from nordpool
-            # TODO: do this only if we can expect Nordpool to have the prices (use time)
-            list_of_prices, date_of_prices = NordpoolGetter.get_tomorrow_price_list()
-            if list_of_prices is not None and date_of_prices is not None:
-                self.create_files_from_nordpool_price_list(list_of_prices, date_of_prices)
-                prices_tomorrow = self.read_prices_file_into_dict(self.create_date_file_path(date_tomorrow))
         return prices_tomorrow
+
+    def check_for_tomorrows_prices(self):
+        if self.tomorrow_prices_available:
+            logger.debug("Prices already available")
+            # tomorrow's prices available, no need to do anything
+            return
+        if not self.check_tomorrow_could_be_available_time():
+            logger.debug("Too early, prices cannot be available")
+            # no prices available but also too early to look for
+            return
+        if self.check_if_tomorrows_prices_in_file():
+            # Tomorrow's prices availabel in file
+            logger.debug("Tomorrow's prices available in file")
+            return
+        if self.get_prices_tomorrow_from_np():
+            logger.debug("Got prices from Nordpool")
+            return
+        logger.debug("Did NOT get prices from Nordpool")
+
+    def check_tomorrow_could_be_available_time(self):
+        # Check if late enough in the day for the tommorrow prices to be available
+        time_h = datetime.datetime.now().hour
+        time_min = datetime.datetime.now().minute
+        if time_h > self.TOMORROW_AVAILABLE_EARLIEST_HOUR:
+            return True
+        if time_h == self.TOMORROW_AVAILABLE_EARLIEST_HOUR and \
+                time_min >= self.TOMORROW_AVAILABLE_EARLIEST_MINUTE:
+            return True
+        return False
+
+    def check_if_tomorrows_prices_in_file(self):
+        prices_tomorrow = self.get_prices_tomorrow_from_file()
+        if len(prices_tomorrow) < (24 - self.NORDPOOL_PRICE_OFSET_HOURS):
+            self.tomorrow_prices_available = False
+            return False
+        # Tomorrows prices in file
+        self.tomorrow_prices_available = True
+        return True
+
+    def get_prices_tomorrow_from_np(self):
+        if not self.check_new_np_req_allowed():
+            # New NP req not allowed
+            return
+        date_tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+        self.time_of_last_np_poll = time.perf_counter()
+        list_of_prices, date_of_prices = NordpoolGetter.get_tomorrow_price_list()
+        if list_of_prices is None or date_of_prices is None:
+            logger.debug("Failed to get prices from nordpool")
+            return None
+        else:
+            logger.debug("Succesfully got prices from nordpool")
+            self.create_files_from_nordpool_price_list(list_of_prices, date_of_prices)
+            prices_tomorrow = self.read_prices_file_into_dict(self.create_date_file_path(date_tomorrow))
+            self.tomorrow_prices_available = True
+            return prices_tomorrow
+
+    def check_new_np_req_allowed(self):
+        time_now = time.perf_counter()
+        time_since_last_poll = time_now - self.time_of_last_np_poll
+        if time_since_last_poll >= self.MIN_NP_POLL_TIME_SEC:
+            logger.debug("New NP poll allowed")
+            return True
+        logger.debug("New NP poll NOT allowed")
+        return False
 
     def read_prices_file_into_dict(self, file_path) -> dict:
         """
