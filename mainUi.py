@@ -25,6 +25,9 @@ from custom_tk_widgets.schedule_2_days_widget import Schedule2DaysWidget
 from custom_tk_widgets.hourly_schedule_creator_widget import HourlyScheduleCreatorWidget
 from schedules.hourly_schedule import HourlySchedule2days
 from schedules.schedule_creator import ScheduleCreator
+from schedules.auto_schedule_creator import AutoScheduleCreator
+from custom_tk_widgets.auto_hourly_schedule_creator_widget import AutoHourlyScheduleCreatorWidget
+
 import secrets
 
 # Setup logging
@@ -79,11 +82,13 @@ class MainUIClass(Tk):
             self.mainloop_cntr_schedule_loops, self.mainloop_cntr_price_mngr_loops = 0, 0, 0, 0, 0
         self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
                                         psw=secrets.MQTT_PSW)
+        self.price_mngr = PriceFileManager(self.PRICE_FILE_LOCATION, self.populate_ui_with_el_prices)
         self.mqtt_client.start()
         self.setup_devices()
         self.setup_schedules()
         self.set_up_ui()
-        self.price_mngr = PriceFileManager(self.PRICE_FILE_LOCATION, self.populate_ui_with_el_prices)
+        # Call loop after creation of UI
+        self.price_mngr.loop()
         self.mainloop()
 
     def mainloop_user(self):
@@ -106,6 +111,9 @@ class MainUIClass(Tk):
         if self.mainloop_cntr_schedule_loops == self.MAINLOOP_CALL_SCHEDULE_LOOPS_MULTIPLIER:
             self.mainloop_cntr_schedule_loops = 0
             self.schedule_test.loop()
+            self.auto_sch_creator.loop()
+            self.auto_schedule_creator_widget.update_widget()
+            self.schedule_widget.update_widget()
 
     def call_device_loops(self):
         self.mainloop_cntr_device_loops += 1
@@ -137,6 +145,8 @@ class MainUIClass(Tk):
     def setup_schedules(self):
         self.schedule_test = HourlySchedule2days("Test schedule")
         self.schedule_test.add_to_device_list(self.plug)
+        self.auto_sch_creator = AutoScheduleCreator(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
+                                                    hourly_schedule=self.schedule_test)
 
     def setup_devices(self):
         """
@@ -177,16 +187,27 @@ class MainUIClass(Tk):
         self.plug_widget = ShellyPlugWidget(parent=self, device=self.plug)
         self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_test)
         create_schedule_callback = lambda max_total, hours_ahead, max_h, min_h: self.create_schedule(max_total,
-                                                                                                     hours_ahead, max_h, min_h)
+                                                                                                     hours_ahead, max_h,
+                                                                                                     min_h)
         self.schedule_creator_widget = HourlyScheduleCreatorWidget(parent=self, fc_to_call=create_schedule_callback)
+        self.auto_schedule_creator_widget = AutoHourlyScheduleCreatorWidget(parent=self,
+                                                                            auto_schedule_creator=self.auto_sch_creator)
 
     def create_schedule(self, max_total: float, hours_ahead: int, max_h: int, min_h: int):
+        logger.debug(f"Parameters: {max_total} {hours_ahead} {max_h} {min_h}")
         # TODO: continue here
         prices_today, prices_tomorrow = self.price_mngr.get_prices_today_tomorrow()
-        schedule_today, schedule_tomorrow = ScheduleCreator.get_schedule_from_prices(prices_today, prices_tomorrow)
+        schedule_today, schedule_tomorrow = ScheduleCreator.get_schedule_from_prices(prices_today,
+                                                                                     prices_tomorrow,
+                                                                                     max_total_cost=max_total,
+                                                                                     hours_ahead_to_calculate=hours_ahead,
+                                                                                     max_hours_to_run=max_h,
+                                                                                     min_hours_to_run=min_h)
+        logger.debug(schedule_today)
+        logger.debug(schedule_tomorrow)
         self.schedule_test.set_schedule_full_day(today_tomorrow=False, schedule=schedule_today)
         self.schedule_test.set_schedule_full_day(today_tomorrow=True, schedule=schedule_tomorrow)
-
+        self.schedule_widget.update_widget()
 
     def place_ui_elements(self):
         """
@@ -201,23 +222,7 @@ class MainUIClass(Tk):
         self.plug_widget.grid(row=2, column=0)
         self.schedule_widget.grid(row=3, column=0)
         self.schedule_creator_widget.grid(row=4, column=0)
-
-    def checkbox_value_changed(self, nr: int, day: int):
-        """
-        TODO: delete, moved to widget code?
-        Called every time one of the checkboxes pressed
-        :param day: today or tomorrow
-        :param nr: checkbox representing which hour in that day
-        :return:
-        """
-        if day == self.KEY_TODAY:
-            value = self.checkbox_value_list_today[nr].get()
-            self.schedule_test.set_schedule_hour_off_on(today_tomorrow=False, hour=nr, cmd=value)
-        elif day == self.KEY_TOMORROW:
-            value = self.checkbox_value_list_tomorrow[nr].get()
-            self.schedule_test.set_schedule_hour_off_on(today_tomorrow=True, hour=nr, cmd=value)
-        else:
-            logger.error("Unknown day key")
+        self.auto_schedule_creator_widget.grid(row=5, column=0)
 
     def test_btn_1(self):
         subprocess.Popen(['explorer', self.PRICE_FILE_LOCATION])

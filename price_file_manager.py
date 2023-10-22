@@ -54,8 +54,6 @@ class PriceFileManager:
         # For limitting np polls
         self.time_of_last_np_poll = 0
         self.update_prices_cb = callback
-        self.check_for_tomorrows_prices()
-        self.check_if_new_day()
 
     def loop(self):
         """
@@ -116,7 +114,6 @@ class PriceFileManager:
 
     def check_for_tomorrows_prices(self):
         if self.tomorrow_prices_available:
-            logger.debug("Prices already available")
             # tomorrow's prices available, no need to do anything
             return
         if not self.check_tomorrow_could_be_available_time():

@@ -21,15 +21,15 @@ logger.addHandler(file_handler)
 
 
 def test():
-    dic1 = {0: 1.0, 1: 2.82, 2: 2.52, 3: 39.6, 4: 75.06, 5: 92.91, 6: 104.52, 7: 150.03, 8: 190.85, 9: 122.88,
+    fake_prices_today = {0: 1.0, 1: 2.82, 2: 2.52, 3: 39.6, 4: 75.06, 5: 92.91, 6: 104.52, 7: 150.03, 8: 190.85, 9: 122.88,
             10: 104.39, 11: 88.69, 12: 81.28, 13: 90.18, 14: 88.63, 15: 90.23, 16: 93.46, 17: 101.96, 18: 104.0,
             19: 140.09, 20: 200.09, 21: 93.49, 22: 7.18, 23: 1.34}
-    dic2 = {0: 1.0, 1: 30.0, 2: 3.0, 3: 40.0, 4: 5.0, 5: 6.0, 6: 7.0, 7: 8.0, 8: 9.0, 9: 10.0,
+    fake_prices_tomorrow = {0: 1.0, 1: 30.0, 2: 3.0, 3: 40.0, 4: 5.0, 5: 6.0, 6: 7.0, 7: 8.0, 8: 9.0, 9: 10.0,
             10: 104.39, 11: 88.69, 12: 81.28, 13: 90.18, 14: 88.63, 15: 90.23, 16: 93.46, 17: 101.96, 18: 104.0,
             19: 0.2, 20: 200.09, 21: 93.49, 22: 7.18, 23: 1.34}
     start_time = time.perf_counter()
-    schedule_today, schedule_tomorrow = ScheduleCreator.get_schedule_from_prices(prices_today=dic1,
-                                                                                 prices_tomorrow=dic2,
+    schedule_today, schedule_tomorrow = ScheduleCreator.get_schedule_from_prices(prices_today=fake_prices_today,
+                                                                                 prices_tomorrow=fake_prices_tomorrow,
                                                                                  max_total_cost=50.0,
                                                                                  hours_ahead_to_calculate=24,
                                                                                  max_hours_to_run=15,
