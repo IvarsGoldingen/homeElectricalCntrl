@@ -2,32 +2,28 @@
 Application for controlling home automation:
 *Control and monitoring of MQTT devices
 *Creating schedules according to electricity price
-TODO: Create tkinter widget for schedule
+TODO: Continue with implementing observer patter - MQTT broker, etc
 TODO: load devices, schedules etc from files, allow creation of new ones automatically
 TODO: use device lists instead of single test device - same for schedule
-TODO: Schedule by hours
 TODO: Use listener design pattern
-
+TODO: When getting prices from NP UI is not updated
 
 """
 
 import os
 import time
 import subprocess
-from tkinter import Tk, Label, Button, StringVar, IntVar, Entry, Frame, Checkbutton, BooleanVar
+from tkinter import Tk, Label, Button, Frame
 import logging
-from functools import partial
 from devices.shellyPlugMqtt import ShellyPlug
 from mqtt_client import MyMqttClient
 from price_file_manager import PriceFileManager
 from custom_tk_widgets.shelly_plug_widget import ShellyPlugWidget
 from custom_tk_widgets.schedule_2_days_widget import Schedule2DaysWidget
-from custom_tk_widgets.hourly_schedule_creator_widget import HourlyScheduleCreatorWidget
 from schedules.hourly_schedule import HourlySchedule2days
-from schedules.schedule_creator import ScheduleCreator
 from schedules.auto_schedule_creator import AutoScheduleCreator
 from custom_tk_widgets.auto_hourly_schedule_creator_widget import AutoHourlyScheduleCreatorWidget
-
+from observer_pattern import Observer
 import secrets
 
 # Setup logging
@@ -51,7 +47,7 @@ def main():
 
 
 # Mainclass extends tkinter for creation of UI
-class MainUIClass(Tk):
+class MainUIClass(Tk, Observer):
     # How often should the status Queue be checked from the cam recorder process
     MAINLOOP_OTHER_INTERVAL_MS = 100
     # In how many mainloops should the device widgets be updated
@@ -82,7 +78,8 @@ class MainUIClass(Tk):
             self.mainloop_cntr_schedule_loops, self.mainloop_cntr_price_mngr_loops = 0, 0, 0, 0, 0
         self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
                                         psw=secrets.MQTT_PSW)
-        self.price_mngr = PriceFileManager(self.PRICE_FILE_LOCATION, self.populate_ui_with_el_prices)
+        self.price_mngr = PriceFileManager(self.PRICE_FILE_LOCATION, None)
+        self.price_mngr.register(self, PriceFileManager.event_name_prices_changed)
         self.mqtt_client.start()
         self.setup_devices()
         self.setup_schedules()
@@ -100,6 +97,11 @@ class MainUIClass(Tk):
         # Start the loop again after delay
         self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)
 
+    def handle_subject_event(self, event_type: str):
+        logger.debug(f"Received event {event_type}")
+        if event_type == PriceFileManager.event_name_prices_changed:
+            self.populate_ui_with_el_prices()
+
     def price_manager_loop(self):
         self.mainloop_cntr_price_mngr_loops += 1
         if self.mainloop_cntr_price_mngr_loops == self.MAINLOOP_CALL_FILE_MNGR_LOOPS_MULTIPLIER:
@@ -110,10 +112,10 @@ class MainUIClass(Tk):
         self.mainloop_cntr_schedule_loops += 1
         if self.mainloop_cntr_schedule_loops == self.MAINLOOP_CALL_SCHEDULE_LOOPS_MULTIPLIER:
             self.mainloop_cntr_schedule_loops = 0
-            self.schedule_test.loop()
+            self.schedule_2days.loop()
             self.auto_sch_creator.loop()
             self.auto_schedule_creator_widget.update_widget()
-            self.schedule_widget.update_widget()
+            #self.schedule_widget.update_widget()
 
     def call_device_loops(self):
         self.mainloop_cntr_device_loops += 1
@@ -143,10 +145,13 @@ class MainUIClass(Tk):
             self.plug_widget.update_widget()
 
     def setup_schedules(self):
-        self.schedule_test = HourlySchedule2days("Test schedule")
-        self.schedule_test.add_to_device_list(self.plug)
+        self.schedule_2days = HourlySchedule2days("2 DAY SCHEDULE")
+        self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days)
+        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
+        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)
+        self.schedule_2days.add_to_device_list(self.plug)
         self.auto_sch_creator = AutoScheduleCreator(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
-                                                    hourly_schedule=self.schedule_test)
+                                                    hourly_schedule=self.schedule_2days)
 
     def setup_devices(self):
         """
@@ -167,8 +172,9 @@ class MainUIClass(Tk):
         self.place_ui_elements()
         self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)
 
-    def populate_ui_with_el_prices(self, prices_today: dict, prices_tomorrow: dict):
+    def populate_ui_with_el_prices(self):
         "Set electrical price data in the user interface"
+        prices_today, prices_tomorrow = self.price_mngr.get_prices_today_tomorrow()
         price_list_today, price_list_tomorrow = [self.DUMMY_PRICE_VALUE] * 24, [self.DUMMY_PRICE_VALUE] * 24
         for hour, value in prices_today.items():
             price_list_today[hour] = value
@@ -182,32 +188,12 @@ class MainUIClass(Tk):
         """
         self.lbl_status = Label(self, text='MQTT STATUS')
         self.frame_extra_btns = Frame(self)
-        self.btn_1 = Button(self.frame_extra_btns, text='TEST 1', command=self.test_btn_1, width=self.BTN_WIDTH)
+        self.btn_1 = Button(self.frame_extra_btns, text='OPEN PRICE FILE FOLDER',
+                            command=self.open_price_file_folder, width=self.BTN_WIDTH)
         self.btn_2 = Button(self.frame_extra_btns, text='TEST 2', command=self.test_btn_2, width=self.BTN_WIDTH)
         self.plug_widget = ShellyPlugWidget(parent=self, device=self.plug)
-        self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_test)
-        create_schedule_callback = lambda max_total, hours_ahead, max_h, min_h: self.create_schedule(max_total,
-                                                                                                     hours_ahead, max_h,
-                                                                                                     min_h)
-        self.schedule_creator_widget = HourlyScheduleCreatorWidget(parent=self, fc_to_call=create_schedule_callback)
         self.auto_schedule_creator_widget = AutoHourlyScheduleCreatorWidget(parent=self,
                                                                             auto_schedule_creator=self.auto_sch_creator)
-
-    def create_schedule(self, max_total: float, hours_ahead: int, max_h: int, min_h: int):
-        logger.debug(f"Parameters: {max_total} {hours_ahead} {max_h} {min_h}")
-        # TODO: continue here
-        prices_today, prices_tomorrow = self.price_mngr.get_prices_today_tomorrow()
-        schedule_today, schedule_tomorrow = ScheduleCreator.get_schedule_from_prices(prices_today,
-                                                                                     prices_tomorrow,
-                                                                                     max_total_cost=max_total,
-                                                                                     hours_ahead_to_calculate=hours_ahead,
-                                                                                     max_hours_to_run=max_h,
-                                                                                     min_hours_to_run=min_h)
-        logger.debug(schedule_today)
-        logger.debug(schedule_tomorrow)
-        self.schedule_test.set_schedule_full_day(today_tomorrow=False, schedule=schedule_today)
-        self.schedule_test.set_schedule_full_day(today_tomorrow=True, schedule=schedule_tomorrow)
-        self.schedule_widget.update_widget()
 
     def place_ui_elements(self):
         """
@@ -221,16 +207,13 @@ class MainUIClass(Tk):
         self.frame_extra_btns.grid(row=1, column=0)
         self.plug_widget.grid(row=2, column=0)
         self.schedule_widget.grid(row=3, column=0)
-        self.schedule_creator_widget.grid(row=4, column=0)
-        self.auto_schedule_creator_widget.grid(row=5, column=0)
+        self.auto_schedule_creator_widget.grid(row=4, column=0)
 
-    def test_btn_1(self):
+    def open_price_file_folder(self):
         subprocess.Popen(['explorer', self.PRICE_FILE_LOCATION])
 
     def test_btn_2(self):
-        logger.info("Inverting plug cmd")
-        off_on = False if self.plug._man_run else True
-        self.plug.set_manual_run(off_on)
+        logger.info("Test btn 2")
 
     def save_and_finish(self):
         # Called on close of UI

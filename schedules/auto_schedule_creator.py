@@ -100,7 +100,7 @@ class AutoScheduleCreator:
         start_hour = 23
         # Set other execution times depending on schedule period
         while start_hour > 0:
-            schedule.every().day.at(f"{start_hour}:{self.MINUTE_START_AT}").do(self.execute_schedule_generation)
+            schedule.every().day.at(f"{start_hour:02}:{self.MINUTE_START_AT:02}").do(self.execute_schedule_generation)
             start_hour -= self._auto_create_period
 
     def execute_schedule_generation(self):

@@ -4,6 +4,7 @@ import os
 import time
 from devices.device import Device
 from typing import List, Optional
+from observer_pattern import Subject
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -25,6 +26,7 @@ def test():
     cntr = 0
     try:
         sch = HourlySchedule2days("Test schedule")
+        #TODO: fix test function
         sch.add_to_device_list(cb1)
         sch.set_schedule_hour_off_on(today_tomorrow=True, hour=12, cmd=True)
         sch.set_schedule_hour_off_on(today_tomorrow=True, hour=1, cmd=True)
@@ -40,16 +42,19 @@ def cb1(cmd: bool):
     print(f"Callback 1 {cmd}")
 
 
-class HourlySchedule2days:
+class HourlySchedule2days(Subject):
     """
     Class for controlling devices in an hourly schedule for today and tomorrow
     """
 
+    event_name_schedule_change = "schedule_changed"
+    event_name_new_device_associated = "new_device_associated"
 
     def __init__(self, name: str):
         """
         :param name: Name of schedule
         """
+        super().__init__()
         self.name = name
         # Dictionarries holding keys from 0 to 23 representing hours in each day
         # If the value of a hour key is true device should be on for that hour
@@ -86,6 +91,7 @@ class HourlySchedule2days:
         :return:
         """
         self.device_list.append(dev)
+        self.notify_observers(self.event_name_new_device_associated)
 
     def set_schedule_hour_off_on(self, today_tomorrow: bool, hour: int, cmd: bool):
         """
@@ -94,6 +100,7 @@ class HourlySchedule2days:
         :param cmd: if a device should be on or off for that hour
         :return:
         """
+        logger.debug(f"Schedule single hour change")
         if 0 <= hour <= 23:
             if not today_tomorrow:
                 self.schedule_today[hour] = cmd
@@ -103,6 +110,7 @@ class HourlySchedule2days:
             logger.error("Invalid hour set")
         logger.debug(f"Schedule today: {self.schedule_today}")
         logger.debug(f"Schedule tomorrow: {self.schedule_tomorrow}")
+        self.notify_observers(self.event_name_schedule_change)
 
     def set_schedule_full_day(self, today_tomorrow: bool, schedule: dict):
         """
@@ -111,11 +119,13 @@ class HourlySchedule2days:
         should be on for that hour
         :return:
         """
+        logger.debug(f"Schedule full day change")
         if len(schedule) == 24:
             if not today_tomorrow:
                 self.schedule_today.update(schedule)
             else:
                 self.schedule_tomorrow.update(schedule)
+            self.notify_observers(self.event_name_schedule_change)
         else:
             logger.error("Invalid schedule set")
 
@@ -128,7 +138,7 @@ class HourlySchedule2days:
 
     def check_if_new_day(self):
         """
-        On new day move tomorrows schedule to today, and clear it
+        On new day move tomorrow's schedule to today, and clear it
         """
         actual_today = datetime.date.today()
         if actual_today == self.datetime_now:
@@ -137,11 +147,12 @@ class HourlySchedule2days:
         # new day
         self.datetime_now = actual_today
         self.move_tomorrow_in_today()
+        self.notify_observers(self.event_name_schedule_change)
 
     def move_tomorrow_in_today(self):
-        # next day, move tomorrows schedule in today
+        # next day, move tomorrow's schedule in today
         self.schedule_today.update(self.schedule_tomorrow)
-        # set tomorrows schedule all to false
+        # set tomorrow's schedule all to false
         self.schedule_tomorrow = {key: False for key in self.schedule_tomorrow}
 
 

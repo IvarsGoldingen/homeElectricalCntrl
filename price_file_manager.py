@@ -2,9 +2,10 @@ import os
 import datetime
 import logging
 import time
-
+from enum import Enum
 from get_nordpool import NordpoolGetter
 from typing import Callable
+from observer_pattern import Subject, Observer
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -38,7 +39,8 @@ def test():
     for hour, price in prices_tomorrow.items():
         print(f"{hour}\t{price}")
 
-class PriceFileManager:
+
+class PriceFileManager(Subject):
     PRICE_FILE_EXTENSION = ".prc"
     NORDPOOL_PRICE_OFSET_HOURS = 1
     # Time at which tomorrow's NP prices expected to be available
@@ -46,8 +48,10 @@ class PriceFileManager:
     TOMORROW_AVAILABLE_EARLIEST_MINUTE = 55
     # To limit how often np gets polled
     MIN_NP_POLL_TIME_SEC = 900  # 900 = 15 min
+    event_name_prices_changed = "prices_changed"
 
     def __init__(self, file_loc: str, callback: Callable[[dict, dict], None]):
+        super().__init__()
         self.file_loc = file_loc
         self.datetime_now = None
         self.tomorrow_prices_available = False
@@ -73,15 +77,19 @@ class PriceFileManager:
             # date has not changed
             return
         if self.datetime_now:
+            # Check if this is none, this is the first cycle for the application
+            # If this exists and not equal to actual today, its a new day
             logger.debug("New day, tomorrows prices cannot be available")
             # Tomorrows prices can not be available since new day just now
             # Check if datetime_now is not None, that would mean first cycle
             self.tomorrow_prices_available = False
+
         else:
             logger.debug("First cycle")
         # new day
         self.delete_old_incorrect_price_files()
         self.datetime_now = actual_today
+        self.notify_observers(self.event_name_prices_changed)
         self.call_callback_with_price_data()
 
     def call_callback_with_price_data(self):
@@ -117,15 +125,16 @@ class PriceFileManager:
             # tomorrow's prices available, no need to do anything
             return
         if not self.check_tomorrow_could_be_available_time():
-            logger.debug("Too early, prices cannot be available")
             # no prices available but also too early to look for
             return
         if self.check_if_tomorrows_prices_in_file():
             # Tomorrow's prices availabel in file
             logger.debug("Tomorrow's prices available in file")
+            self.notify_observers(self.event_name_prices_changed)
             return
         if self.get_prices_tomorrow_from_np():
             logger.debug("Got prices from Nordpool")
+            self.notify_observers(self.event_name_prices_changed)
             return
         logger.debug("Did NOT get prices from Nordpool")
 

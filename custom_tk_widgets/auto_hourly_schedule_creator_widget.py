@@ -2,7 +2,23 @@ from functools import partial
 import tkinter as tk
 from tkinter import Label, Button, font, Text
 from schedules.auto_schedule_creator import AutoScheduleCreator
+import logging
+import os
 
+# Setup logging
+log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+# Console debug
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(log_formatter)
+stream_handler.setLevel(logging.DEBUG)
+logger.addHandler(stream_handler)
+# File logger
+file_handler = logging.FileHandler(os.path.join("logs", "auto_creator.log"))
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(logging.DEBUG)
+logger.addHandler(file_handler)
 
 class AutoHourlyScheduleCreatorWidget(tk.Frame):
     """
@@ -78,6 +94,9 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
                                                       min_hours_to_run=min_h_int)
             self.lbl_title.config(text="SCHEDULE CREATOR")
         except ValueError:
+            logger.error("Invalid parameters")
+            logger.error(f"max_total_str{max_total_str}, hours_ahead_str{hours_ahead_str}, max_h_str{max_h_str},"
+                         f" min_h_str{min_h_str}")
             self.lbl_title.config(text="INVALID INPUT")
 
     def generate_schedule_now(self):

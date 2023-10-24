@@ -4,6 +4,7 @@ import logging
 import tkinter as tk
 from tkinter import Label, font, Frame, Checkbutton, BooleanVar
 from schedules.hourly_schedule import HourlySchedule2days
+from observer_pattern import Observer
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -20,7 +21,8 @@ file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 
-class Schedule2DaysWidget(tk.Frame):
+
+class Schedule2DaysWidget(tk.Frame, Observer):
     """
     UI widget for HourlySchedule2days object
     Displays 2 day schedule. Each checkbox represents an hour in today and tomorrow. If schecbox active, the device
@@ -36,7 +38,7 @@ class Schedule2DaysWidget(tk.Frame):
         super().__init__(parent, borderwidth=2, relief="solid")
         # SChedule asociated with the widget
         self.schedule = schedule
-        #UI objects containing the checkboxes
+        # UI objects containing the checkboxes
         self.frame_list_today, self.lbl_check_box_list_today, self.checkbox_value_list_today, \
             self.checkbox_list_today = [], [], [], []
         self.frame_list_tomorrow, self.lbl_check_box_list_tomorrow, self.checkbox_value_list_tomorrow, \
@@ -44,6 +46,11 @@ class Schedule2DaysWidget(tk.Frame):
         self.frame_today, self.frame_tomorrow = Frame(self), Frame(self)
         self._prepare_widget_elements()
         self._place_widget_elements()
+        self.update_widget()
+
+    def handle_subject_event(self, event_type: str):
+        # The subject has notified this of an event
+        logger.debug(f"Widget notified of an event {event_type}")
         self.update_widget()
 
     def update_widget(self):
@@ -64,11 +71,11 @@ class Schedule2DaysWidget(tk.Frame):
             checkbox_value.set(hour_off_on)
 
     def add_extra_text_for_hours(self, text_list_today: list, text_list_tomorrow: list):
-        logger.debug(f"Adding prices {len(text_list_today)}    {len(text_list_tomorrow)}")
+        logger.debug("Adding extra text for hours")
         if len(text_list_today) != 24 or len(text_list_tomorrow) != 24:
+            logger.error("Unexpected additional text list for hours")
             # expected new text for each hour
             return
-        logger.debug("Adding prices 2")
         for hour, (lbl, extra_text) in enumerate(zip(self.lbl_check_box_list_today, text_list_today)):
             lbl.config(text=f"{hour:02}:00\r{extra_text}")
         for hour, (lbl, extra_text) in enumerate(zip(self.lbl_check_box_list_tomorrow, text_list_tomorrow)):
