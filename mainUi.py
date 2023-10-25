@@ -74,23 +74,30 @@ class MainUIClass(Tk, Observer):
         super().__init__()
         logger.info("Program started")
         # Variables that determine how often certain functions are called
-        self.mainloop_cntr_widgets, self.mainloop_cntr_mqtt, self.mainloop_cntr_device_loops, \
-            self.mainloop_cntr_schedule_loops, self.mainloop_cntr_price_mngr_loops = 0, 0, 0, 0, 0
+        self.mainloop_cntr_widgets, self.mainloop_cntr_device_loops, \
+            self.mainloop_cntr_schedule_loops, self.mainloop_cntr_price_mngr_loops = 0, 0, 0, 0
         self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
                                         psw=secrets.MQTT_PSW)
-        self.price_mngr = PriceFileManager(self.PRICE_FILE_LOCATION, None)
-        self.price_mngr.register(self, PriceFileManager.event_name_prices_changed)
+        self.mqtt_client.register(self, MyMqttClient.event_name_status_change)
         self.mqtt_client.start()
+        self.price_mngr = PriceFileManager(self.PRICE_FILE_LOCATION)
+        self.price_mngr.register(self, PriceFileManager.event_name_prices_changed)
         self.setup_devices()
         self.setup_schedules()
         self.set_up_ui()
+        self.update_mqtt_status()
         # Call loop after creation of UI
         self.price_mngr.loop()
         self.mainloop()
 
+    def init_mqtt_client(self):
+        self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
+                                        psw=secrets.MQTT_PSW)
+        self.mqtt_client.register(self, MyMqttClient.event_name_status_change)
+        self.mqtt_client.start()
+
     def mainloop_user(self):
         self.update_device_widgets()
-        self.update_mqtt_status()
         self.call_schedule_loops()
         self.call_device_loops()
         self.price_manager_loop()
@@ -101,7 +108,8 @@ class MainUIClass(Tk, Observer):
         logger.debug(f"Received event {event_type}")
         if event_type == PriceFileManager.event_name_prices_changed:
             self.populate_ui_with_el_prices()
-
+        elif event_type == MyMqttClient.event_name_status_change:
+            self.update_mqtt_status()
     def price_manager_loop(self):
         self.mainloop_cntr_price_mngr_loops += 1
         if self.mainloop_cntr_price_mngr_loops == self.MAINLOOP_CALL_FILE_MNGR_LOOPS_MULTIPLIER:
@@ -128,11 +136,8 @@ class MainUIClass(Tk, Observer):
         Update MQTT client status in the UI
         :return:
         """
-        self.mainloop_cntr_mqtt += 1
-        if self.mainloop_cntr_mqtt == self.MAINLOOP_UPDATE_MQTT_CLIENT_MULTIPLIER:
-            self.mainloop_cntr_mqtt = 0
-            new_text = self.mqtt_client.status_strings.get(self.mqtt_client.status, "UNKNOWN")
-            self.lbl_status.config(text=new_text)
+        new_text = self.mqtt_client.status_strings.get(self.mqtt_client.status, "UNKNOWN")
+        self.lbl_status.config(text=new_text)
 
     def update_device_widgets(self):
         """

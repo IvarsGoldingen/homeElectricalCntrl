@@ -2,10 +2,8 @@ import os
 import datetime
 import logging
 import time
-from enum import Enum
 from get_nordpool import NordpoolGetter
-from typing import Callable
-from observer_pattern import Subject, Observer
+from observer_pattern import Subject
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -50,14 +48,13 @@ class PriceFileManager(Subject):
     MIN_NP_POLL_TIME_SEC = 900  # 900 = 15 min
     event_name_prices_changed = "prices_changed"
 
-    def __init__(self, file_loc: str, callback: Callable[[dict, dict], None]):
+    def __init__(self, file_loc: str):
         super().__init__()
         self.file_loc = file_loc
         self.datetime_now = None
         self.tomorrow_prices_available = False
         # For limitting np polls
         self.time_of_last_np_poll = 0
-        self.update_prices_cb = callback
 
     def loop(self):
         """
@@ -90,15 +87,6 @@ class PriceFileManager(Subject):
         self.delete_old_incorrect_price_files()
         self.datetime_now = actual_today
         self.notify_observers(self.event_name_prices_changed)
-        self.call_callback_with_price_data()
-
-    def call_callback_with_price_data(self):
-        if self.update_prices_cb:
-            logger.debug("Calling callback with prices")
-            prices_today, prices_tomorrow = self.get_prices_today_tomorrow()
-            self.update_prices_cb(prices_today, prices_tomorrow)
-        else:
-            logger.debug("Callback does not exist")
 
     def get_prices_today_tomorrow(self) -> [dict, dict]:
         """

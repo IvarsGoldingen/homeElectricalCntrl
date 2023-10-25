@@ -17,6 +17,7 @@ file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 
+
 class Subject(ABC):
     def __init__(self):
         self._observers = {}
@@ -35,6 +36,7 @@ class Subject(ABC):
         if event_type in self._observers:
             for observer in self._observers[event_type]:
                 observer.handle_subject_event(event_type)
+
 
 class Observer(ABC):
     def handle_subject_event(self, event_type: str):

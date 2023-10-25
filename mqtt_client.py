@@ -1,12 +1,9 @@
-"""
-Class that inherits from paho mqtt.Client
-Used to monitor certain topics on the mqtt broker and publish as well if needed
-"""
-
 import paho.mqtt.client as mqtt
 import logging
 import os
 from typing import Callable
+from observer_pattern import Subject
+import secrets
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -25,7 +22,7 @@ logger.addHandler(file_handler)
 
 
 def test():
-    client = MyMqttClient("192.168.94.199", 1883, user="dev1", psw="ivarsdevice")
+    client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
     client.start()
     client.subscribe("shellies/shellyplug-s-80646F840029/#")
     device_bool = False
@@ -40,7 +37,14 @@ def test():
         device_bool = not device_bool
 
 
-class MyMqttClient(mqtt.Client):
+class MyMqttClient(mqtt.Client, Subject):
+    """
+    Class that inherits from paho mqtt.Client
+    Used to monitor certain topics on the mqtt broker and publish as well if needed
+    """
+    event_name_status_change = "mqtt_status_changed"
+
+
     # Connection status constants
     STATUS_DISCONNECTED = 0
     STATUS_CONNECTED = 1
@@ -51,8 +55,9 @@ class MyMqttClient(mqtt.Client):
     }
 
     def __init__(self, broker_addr: str, port: int, user: str, psw: str):
-        super().__init__()
-        self.reconnect_delay_set(min_delay=1, max_delay=1) # in seconds
+        mqtt.Client.__init__(self)
+        Subject.__init__(self)
+        self.reconnect_delay_set(min_delay=10, max_delay=60) # in seconds
         self.status = self.STATUS_DISCONNECTED
         self.broker_addr = broker_addr
         self.port = port
@@ -63,7 +68,6 @@ class MyMqttClient(mqtt.Client):
 
     def start(self):
         logger.info(f"Connecting to MQTT broker. {self.broker_addr}:{self.port}")
-        # TODO: connect non blocking way
         # self.connect(host=self.broker_addr, port=self.port, keepalive=60, bind_address="")
         self.connect_async(host=self.broker_addr, port=self.port, keepalive=60, bind_address="")
         # start mqtt client loop to monitor messages and handle publishing
@@ -96,6 +100,7 @@ class MyMqttClient(mqtt.Client):
         logger.info(f"On connect callback, code {rc}")
         if rc == 0:
             self.status = self.STATUS_CONNECTED
+            self.notify_observers(self.event_name_status_change)
             self.subscribe_to_device_topics()
         else:
             # TODO: handle automatic reconnection attempt after delay
@@ -104,6 +109,7 @@ class MyMqttClient(mqtt.Client):
     def on_disconnect(self, client, userdata, rc):
         logger.info(f"Disconnected from MQTT broker, code {rc}")
         self.status = self.STATUS_DISCONNECTED
+        self.notify_observers(self.event_name_status_change)
 
     def on_message(self, client, userdata, msg):
         logger.debug(msg.topic + " " + str(msg.payload))
