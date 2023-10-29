@@ -2,9 +2,10 @@ from functools import partial
 import tkinter as tk
 from tkinter import Label, Button, font
 from devices.device import Device
+from observer_pattern import Observer
 
 
-class DeviceWidget(tk.Frame):
+class DeviceWidget(tk.Frame, Observer):
     """
     UI widget for Device object
     Displays its status and allows manual control
@@ -48,6 +49,9 @@ class DeviceWidget(tk.Frame):
         self.btn_man.grid(row=2, column=1)
         self.btn_man_on.grid(row=3, column=0)
         self.btn_man_off.grid(row=3, column=1)
+
+    def handle_subject_event(self, event_type: str):
+        self.update_widget()
 
     def update_widget(self):
         self.update_status_label()

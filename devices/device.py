@@ -5,9 +5,26 @@ Manual = controlled by user
 Auto = controlled by program, algorthm etc.
 """
 from abc import ABC, abstractmethod
+from observer_pattern import Subject
+import logging
+import os
 
+# Setup logging
+log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+# Console debug
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(log_formatter)
+logger.addHandler(stream_handler)
 
-class Device(ABC):
+# File logger
+file_handler = logging.FileHandler(os.path.join("logs", "device.log"))
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(logging.DEBUG)
+logger.addHandler(file_handler)
+
+class Device(Subject):
     # TODO: use ENUM here
     STATUS_FAULT = 0
     STATUS_MAN_ON = 1
@@ -27,9 +44,12 @@ class Device(ABC):
         STATUS_BLOCKED: "Blocked"
     }
 
+    event_name_status_changed = "device_status_changed"
+
     def __init__(self, name: str = "Test_device"):
         # On or off setpoint for device which it listens to if it is the corresponding mode
         # _man_run always holds the current setpoint
+        super().__init__()
         self._man_run = False
         self._auto_run = False
         # device will be turned off in either mode
@@ -43,6 +63,7 @@ class Device(ABC):
         if not self.auto_man:
             # if switched to auto mode, write auto cmd to device
             self.set_auto_run(self._auto_run)
+        self.notify_observers(self.event_name_status_changed)
 
     def set_block(self, block: bool):
         """
@@ -56,6 +77,7 @@ class Device(ABC):
             self._man_run = False
             # Turn off device if block request
             self._turn_device_off_on(False)
+        self.notify_observers(self.event_name_status_changed)
 
     def set_manual_run(self, off_on: bool):
         """
@@ -67,6 +89,7 @@ class Device(ABC):
             # if device in manual mode allow control
             self._man_run = self._block_check(off_on)
             self._turn_device_off_on(self._man_run)
+        self.notify_observers(self.event_name_status_changed)
 
     def get_cmd_given(self):
         # The final command is written in man_run so return that
@@ -78,7 +101,9 @@ class Device(ABC):
         :param off_on: turn the device on or off - auto mode only
         :return:
         """
-        self._auto_run = off_on
+        if off_on != self._auto_run:
+            self._auto_run = off_on
+            self.notify_observers(self.event_name_status_changed)
         if not self.auto_man:
             # device in auto mode
             # write same to man run so when switching from auto to man does not change device state

@@ -59,7 +59,7 @@ class PriceFileManager(Subject):
     def loop(self):
         """
         Call periodically to automatically retrieve tomorrow prices from Nordpool
-        And to call a callback function if there is one
+        To move tomorrow's prices in today at midnight
         :return:
         """
         self.check_if_new_day()

@@ -49,13 +49,15 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
             None, None, None
         self._prepare_widget_elements()
         self._place_widget_elements()
+        self.update_widget()
 
     def update_widget(self):
         if not self.auto_schedule_creator:
+            # If creator not assigned to widget return
             return
         self.update_actual_settings()
         self.update_btn_colors()
-        self.update_associated_device()
+        self.update_associated_schedule()
 
     def update_actual_settings(self):
         auto_create_period, max_total_cost, max_hours_to_run, min_hours_to_run = self.auto_schedule_creator\
@@ -65,9 +67,9 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
         self.lbl_max_h_act.config(text=f" {max_hours_to_run}")
         self.lbl_min_h_act.config(text=f" {min_hours_to_run}")
 
-    def update_associated_device(self):
+    def update_associated_schedule(self):
         name = self.auto_schedule_creator.get_schedule_name()
-        self.lbl_associated_schedule.config(text=f"{name}")
+        self.lbl_associated_schedule.config(text=f"Associated schedule: {name}")
 
     def update_btn_colors(self):
         off_on = self.auto_schedule_creator.get_auto_create_enabled()
@@ -93,6 +95,7 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
                                                       max_hours_to_run=max_h_int,
                                                       min_hours_to_run=min_h_int)
             self.lbl_title.config(text="SCHEDULE CREATOR")
+            self.update_widget()
         except ValueError:
             logger.error("Invalid parameters")
             logger.error(f"max_total_str{max_total_str}, hours_ahead_str{hours_ahead_str}, max_h_str{max_h_str},"
@@ -101,6 +104,13 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
 
     def generate_schedule_now(self):
         self.auto_schedule_creator.execute_schedule_generation()
+
+    def set_auto_create(self, off_on: bool):
+        # Enable or disable auto creation of schedules
+        if self.auto_schedule_creator:
+            # Only if a schedule creator assigned to this
+            self.auto_schedule_creator.set_auto_create_enabled(off_on)
+            self.update_btn_colors()
 
     def _prepare_widget_elements(self):
         # Create a custom font with bold style
@@ -119,20 +129,19 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
         self.lbl_h_ahead_to_calc_act = Label(self, text="0", width=self.TEXT_BOX_WIDTH)
         self.lbl_max_h_act = Label(self, text="0", width=self.TEXT_BOX_WIDTH)
         self.lbl_min_h_act = Label(self, text="0", width=self.TEXT_BOX_WIDTH)
-        self.txt_max_total_cost.insert("1.0", "40.0")
-        self.txt_h_ahead_to_calc.insert("1.0", "12")
-        self.txt_max_h.insert("1.0", "10")
-        self.txt_min_h.insert("1.0", "6")
+        self.txt_max_total_cost.insert("1.0", "300.0")
+        self.txt_h_ahead_to_calc.insert("1.0", "6")
+        self.txt_max_h.insert("1.0", "5")
+        self.txt_min_h.insert("1.0", "2")
         self.btn_create_now = Button(self, text='CREATE NOW', command=self.generate_schedule_now,
                                      width=self.BTN_WIDTH)
         self.btn_apply_settings = Button(self, text='APPLY SETTINGS', command=self.set_parameters_from_user_input,
                                          width=self.BTN_WIDTH)
         self.btn_enable_auto = Button(self, text='ENABLE AUTO CREATE',
-                                      command=partial(self.auto_schedule_creator.set_auto_create_enabled, off_on=True),
+                                      command=partial(self.set_auto_create, off_on=True),
                                       width=self.BTN_WIDTH)
         self.btn_disable_auto = Button(self, text='DISABLE AUTO CREATE',
-                                       command=partial(self.auto_schedule_creator.set_auto_create_enabled,
-                                                       off_on=False),
+                                       command=partial(self.set_auto_create, off_on=False),
                                        width=self.BTN_WIDTH)
 
     def _place_widget_elements(self):

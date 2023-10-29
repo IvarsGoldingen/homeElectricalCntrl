@@ -89,7 +89,7 @@ class ShellyPlug(MqttDevice):
     def loop(self):
         """
         Call periodically
-        hecks wether set device status equals set state
+        checks wether set device status equals set state
         And checks when the last msg received from it to detect device not connected
         :return:
         """
@@ -100,7 +100,11 @@ class ShellyPlug(MqttDevice):
     def check_status_online_offline(self):
         # Checks wether set device status equals set state
         time_since_last_msg = time.perf_counter() - self.time_of_last_msg
-        self.state_online = False if time_since_last_msg > self.TIME_SINCE_LAST_MSG_TO_CONSIDER_ONLINE_S else True
+        online = False if time_since_last_msg > self.TIME_SINCE_LAST_MSG_TO_CONSIDER_ONLINE_S else True
+        if online != self.state_online:
+            logger.debug(f"{self.name} went online" if online else f"{self.name} went offline")
+            self.notify_observers(self.event_name_status_changed)
+            self.state_online = online
 
     def check_cmd_vs_actual_state(self):
         if not self.state_online:
@@ -144,20 +148,21 @@ class ShellyPlug(MqttDevice):
                     setattr(self, target_variable, new_value)
                     self.check_for_overtemperature()
                 except ValueError:
-                    # Handle conversion errors if needed
+                    # Handle conversion errors
                     logger.debug(f"Value error {data} in topic {topic}")
-                    pass
+            logger.debug(f"notify_observers 1")
+            self.notify_observers(self.event_name_status_changed)
         else:
             # Handle unrecognized topics if needed
             logger.debug("Unhandled MQTT msg:")
             logger.debug(f"{topic}\t{data}")
-        logger.debug(f"{self.temperature} {self.power} {self.energy} {self.state_off_on}")
 
     def check_for_overtemperature(self):
         "If msg of overtemperature received, block device"
         if self.overtemperature != self.OVERTEMPERATURE_OK:
             logger.warning(f"Overtemperature {self.name}")
             self.set_block(True)
+            self.notify_observers(self.event_name_status_changed)
 
     def _turn_device_off_on(self, off_on: bool):
         """

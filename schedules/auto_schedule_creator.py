@@ -1,5 +1,4 @@
 import schedule
-import time
 import logging
 import os
 from schedules.hourly_schedule import HourlySchedule2days
@@ -43,15 +42,16 @@ class AutoScheduleCreator:
 
     # Auto schedule create periods allowed in hours
     ALLOWED_PERIODS = [6, 8, 12, 24]
+    # At what minute is the schedule created - 23:55, 15:55 ... for 8 hour period
     MINUTE_START_AT = 55
 
     def __init__(self,
                  get_prices_method: Callable[[], Tuple[Dict, Dict]],
                  hourly_schedule: HourlySchedule2days = None,
-                 auto_create_period: int = 8,
-                 max_total_cost: float = 50.0,
-                 max_hours_to_run: int = 4,
-                 min_hours_to_run: int = 0):
+                 auto_create_period: int = 6,
+                 max_total_cost: float = 300.0,
+                 max_hours_to_run: int = 5,
+                 min_hours_to_run: int = 2):
         self._get_prices_method = get_prices_method
         self._auto_create_enabled = False
         self._auto_create_period = auto_create_period
@@ -62,6 +62,7 @@ class AutoScheduleCreator:
         self._min_hours_to_run = min_hours_to_run
 
     def loop(self):
+        # Call periodically to execute auto schedule creation
         if self._auto_create_enabled:
             schedule.run_pending()
 

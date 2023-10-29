@@ -2,6 +2,7 @@ from tkinter import Label
 from devices.shellyPlugMqtt import ShellyPlug
 from custom_tk_widgets.device_widget import DeviceWidget
 
+
 class ShellyPlugWidget(DeviceWidget):
     def __init__(self, parent, device: ShellyPlug):
         """
