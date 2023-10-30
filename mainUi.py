@@ -2,7 +2,7 @@
 Application for controlling home automation:
 *Control and monitoring of MQTT devices
 *Creating schedules according to electricity price
-TODO: Continue with implementing observer patter - devices
+TODO: Continue with implementing daily timed schedule
 TODO: load devices, schedules etc from files, allow creation of new ones automatically
 TODO: use device lists instead of single test device - same for schedule
 TODO: Use listener design pattern
@@ -23,7 +23,9 @@ from custom_tk_widgets.shelly_plug_widget import ShellyPlugWidget
 from custom_tk_widgets.schedule_2_days_widget import Schedule2DaysWidget
 from schedules.hourly_schedule import HourlySchedule2days
 from schedules.auto_schedule_creator import AutoScheduleCreator
+from schedules.daily_timed_schedule import DailyTimedSchedule
 from custom_tk_widgets.auto_hourly_schedule_creator_widget import AutoHourlyScheduleCreatorWidget
+from custom_tk_widgets.daily_timed_schedule_widget import DailyTimedScheduleCreatorWidget
 from observer_pattern import Observer
 import secrets
 
@@ -110,6 +112,7 @@ class MainUIClass(Tk, Observer):
         # Execute this same function in regular intervals
         self.schedule_2days.loop()
         self.auto_sch_creator.loop()
+        self.alarm_clock.loop()
         self.schedule_thread = Timer(self.LOOP_SCHEDULE_INTERVAL_S, self.schedule_threaded_loop)
         self.schedule_thread.start()
 
@@ -136,12 +139,11 @@ class MainUIClass(Tk, Observer):
 
     def setup_schedules(self):
         self.schedule_2days = HourlySchedule2days("2 DAY SCHEDULE")
-        self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days)
-        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
-        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)
+
         self.schedule_2days.add_to_device_list(self.plug1)
         self.auto_sch_creator = AutoScheduleCreator(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                     hourly_schedule=self.schedule_2days)
+        self.alarm_clock = DailyTimedSchedule(name="Alarm clock")
 
     def setup_devices(self):
         """
@@ -181,9 +183,18 @@ class MainUIClass(Tk, Observer):
                             command=self.open_price_file_folder, width=self.BTN_WIDTH)
         self.btn_2 = Button(self.frame_extra_btns, text='TEST 2', command=self.test_btn_2, width=self.BTN_WIDTH)
         self.plug_widget = ShellyPlugWidget(parent=self, device=self.plug1)
-        self.auto_schedule_creator_widget = AutoHourlyScheduleCreatorWidget(parent=self,
-                                                                            auto_schedule_creator=self.auto_sch_creator)
         self.plug1.register(self.plug_widget, Device.event_name_status_changed)
+        self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days)
+        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
+        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)
+        self.frame_widgets_bottom = Frame(self)
+        self.auto_schedule_creator_widget = AutoHourlyScheduleCreatorWidget(parent=self.frame_widgets_bottom,
+                                                                            auto_schedule_creator=self.auto_sch_creator)
+        self.alarm_clock_widget = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
+                                                                  sch=self.alarm_clock)
+        self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_schedule_change)
+        self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_new_device_associated)
+
 
     def place_ui_elements(self):
         """
@@ -197,7 +208,9 @@ class MainUIClass(Tk, Observer):
         self.frame_extra_btns.grid(row=1, column=0)
         self.plug_widget.grid(row=2, column=0)
         self.schedule_widget.grid(row=3, column=0)
-        self.auto_schedule_creator_widget.grid(row=4, column=0)
+        self.frame_widgets_bottom.grid(row=4, column=0)
+        self.auto_schedule_creator_widget.grid(row=0, column=0)
+        self.alarm_clock_widget.grid(row=0, column=1)
 
     def open_price_file_folder(self):
         subprocess.Popen(['explorer', self.PRICE_FILE_LOCATION])

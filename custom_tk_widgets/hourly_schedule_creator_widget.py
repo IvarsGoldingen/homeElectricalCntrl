@@ -3,7 +3,6 @@ import logging
 import tkinter as tk
 from tkinter import Label, Button, font, Text
 from typing import Callable
-from observer_pattern import Observer
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')

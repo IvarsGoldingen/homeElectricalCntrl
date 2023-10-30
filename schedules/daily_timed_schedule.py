@@ -60,6 +60,8 @@ class DailyTimedSchedule(Subject):
         self._minute_on = 45
         self._on_time_min = 15
         self.set_settings(hour_on, minute_on, on_time_min)
+        # Will the schedule activate at the set time
+        self._schedule_enabled = False
         # should device be on or off
         self._command = False
         # Base schedule
@@ -67,8 +69,7 @@ class DailyTimedSchedule(Subject):
         self.name = name
         # Devices that are controlled by this schedule
         self.device_list: Optional[List[Device]] = []
-        # Will the schedule activate at the set time
-        self.schedule_enabled = False
+
         # if false, will be executed once
         self.repeat_daily = True
         self.time_when_dev_was_turned_on_s = 0
@@ -92,10 +93,16 @@ class DailyTimedSchedule(Subject):
         """
         Start the schedule
         """
-        logger.debug("Enabling schedule")
+        logger.debug(f"Enabling schedule {self._hour_on:02}:{self._minute_on:02}")
         self.schedule_base.clear()
         self.schedule_base.every().day.at(f"{self._hour_on:02}:{self._minute_on:02}").do(self.turn_devices_on)
-        self.schedule_enabled = True
+        self._schedule_enabled = True
+        self.notify_observers(self.event_name_schedule_change)
+
+    def disable_schedule(self):
+        logger.debug("Disabling schedule")
+        self._schedule_enabled = False
+        self.schedule_base.clear()
         self.notify_observers(self.event_name_schedule_change)
 
     def set_settings(self, hour_on, minute_on, on_time_min):
@@ -108,6 +115,9 @@ class DailyTimedSchedule(Subject):
             self._on_time_min = on_time_min
         self.notify_observers(self.event_name_schedule_change)
 
+    def get_settings(self, ):
+        return self._hour_on, self._minute_on, self._on_time_min
+
     def turn_devices_on(self):
         # Turn on devices from schedule
         logger.debug("Turning on")
@@ -116,10 +126,8 @@ class DailyTimedSchedule(Subject):
         self.write_cmd_to_devices()
         self.notify_observers(self.event_name_schedule_change)
         if not self.repeat_daily:
-            logger.debug("Daily repeat is off, disabling scheudle")
-            # If schedule set up to execute only once cancel the job
-            self.schedule_enabled = False
-            self.schedule_base.clear()
+            logger.debug("Daily repeat is off, disabling schedule")
+            self.disable_schedule()
 
     def check_if_time_to_turn_off(self):
         """
@@ -151,6 +159,14 @@ class DailyTimedSchedule(Subject):
         # Add a device to be controlled from this schedule
         self.device_list.append(device)
         self.notify_observers(self.event_name_new_device_associated)
+
+    @property
+    def schedule_enabled(self):
+        return self._schedule_enabled
+
+    @property
+    def command(self):
+        return self._command
 
 
 if __name__ == '__main__':
