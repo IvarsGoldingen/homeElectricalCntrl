@@ -59,17 +59,16 @@ class DailyTimedSchedule(Subject):
         self._hour_on = 6
         self._minute_on = 45
         self._on_time_min = 15
-        self.set_settings(hour_on, minute_on, on_time_min)
         # Will the schedule activate at the set time
         self._schedule_enabled = False
         # should device be on or off
         self._command = False
         # Base schedule
         self.schedule_base = schedule.Scheduler()
+        self.set_settings(hour_on, minute_on, on_time_min)
         self.name = name
         # Devices that are controlled by this schedule
         self.device_list: Optional[List[Device]] = []
-
         # if false, will be executed once
         self.repeat_daily = True
         self.time_when_dev_was_turned_on_s = 0
@@ -113,6 +112,7 @@ class DailyTimedSchedule(Subject):
             self._minute_on = minute_on
         if 0 < on_time_min < 1440:
             self._on_time_min = on_time_min
+        self.enable_schedule()
         self.notify_observers(self.event_name_schedule_change)
 
     def get_settings(self, ):

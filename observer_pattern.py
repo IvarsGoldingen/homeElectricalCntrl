@@ -17,6 +17,12 @@ file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 
+"""
+A Subject and Observer classes for implementing the observer pattern.
+Example use cases:
+A device(plug) would be the subject. The observer for it would be a widget in the UI. When both objects are created
+the widget is registered to the plug. Any change od the device would be shown in UI.
+"""
 
 class Subject(ABC):
     def __init__(self):
@@ -32,7 +38,6 @@ class Subject(ABC):
             self._observers[event_type].remove(observer)
 
     def notify_observers(self, event_type):
-        logger.debug(f"Notifying observers, event type: {event_type}")
         if event_type in self._observers:
             for observer in self._observers[event_type]:
                 observer.handle_subject_event(event_type)

@@ -48,39 +48,6 @@ class Schedule2DaysWidget(tk.Frame, Observer):
         self._place_widget_elements()
         self.update_widget()
 
-    def handle_subject_event(self, event_type: str):
-        # The subject has notified this of an event
-        logger.debug(f"Widget notified of an event {event_type}")
-        self.update_widget()
-
-    def update_widget(self):
-        self.update_checkboxes()
-        self.update_associated_device()
-
-    def update_associated_device(self):
-        # Add text to widget which displays which devices does the schedule control
-        text = "No devices associated with schedule" if not self.schedule.device_list else \
-            f"Associated devices: {', '.join(dev.name for dev in self.schedule.device_list)}"
-        self.lbl_associated_device.config(text=text)
-
-    def update_checkboxes(self):
-        for checkbox_value, hour_off_on in zip(self.checkbox_value_list_today, self.schedule.schedule_today.values()):
-            checkbox_value.set(hour_off_on)
-        for checkbox_value, hour_off_on in zip(self.checkbox_value_list_tomorrow,
-                                               self.schedule.schedule_tomorrow.values()):
-            checkbox_value.set(hour_off_on)
-
-    def add_extra_text_for_hours(self, text_list_today: list, text_list_tomorrow: list):
-        logger.debug("Adding extra text for hours")
-        if len(text_list_today) != 24 or len(text_list_tomorrow) != 24:
-            logger.error("Unexpected additional text list for hours")
-            # expected new text for each hour
-            return
-        for hour, (lbl, extra_text) in enumerate(zip(self.lbl_check_box_list_today, text_list_today)):
-            lbl.config(text=f"{hour:02}:00\r{extra_text}")
-        for hour, (lbl, extra_text) in enumerate(zip(self.lbl_check_box_list_tomorrow, text_list_tomorrow)):
-            lbl.config(text=f"{hour:02}:00\r{extra_text}")
-
     def _place_widget_elements(self):
         for nr, frame in enumerate(self.frame_list_today):
             self.lbl_check_box_list_today[nr].grid(row=0, column=0)
@@ -121,6 +88,39 @@ class Schedule2DaysWidget(tk.Frame, Observer):
                                                                            nr=i, day=self.KEY_TOMORROW)))
             self.lbl_check_box_list_tomorrow.append(Label(self.frame_list_tomorrow[i], text=f"{i:02}:00",
                                                           width=self.HOUR_WIDTH))
+
+    def handle_subject_event(self, event_type: str):
+        # The subject has notified this of an event
+        logger.debug(f"Widget notified of an event {event_type}")
+        self.update_widget()
+
+    def update_widget(self):
+        self.update_checkboxes()
+        self.update_associated_device()
+
+    def update_associated_device(self):
+        # Add text to widget which displays which devices does the schedule control
+        text = "No devices associated with schedule" if not self.schedule.device_list else \
+            f"Associated devices: {', '.join(dev.name for dev in self.schedule.device_list)}"
+        self.lbl_associated_device.config(text=text)
+
+    def update_checkboxes(self):
+        for checkbox_value, hour_off_on in zip(self.checkbox_value_list_today, self.schedule.schedule_today.values()):
+            checkbox_value.set(hour_off_on)
+        for checkbox_value, hour_off_on in zip(self.checkbox_value_list_tomorrow,
+                                               self.schedule.schedule_tomorrow.values()):
+            checkbox_value.set(hour_off_on)
+
+    def add_extra_text_for_hours(self, text_list_today: list, text_list_tomorrow: list):
+        logger.debug("Adding extra text for hours")
+        if len(text_list_today) != 24 or len(text_list_tomorrow) != 24:
+            logger.error("Unexpected additional text list for hours")
+            # expected new text for each hour
+            return
+        for hour, (lbl, extra_text) in enumerate(zip(self.lbl_check_box_list_today, text_list_today)):
+            lbl.config(text=f"{hour:02}:00\r{extra_text}")
+        for hour, (lbl, extra_text) in enumerate(zip(self.lbl_check_box_list_tomorrow, text_list_tomorrow)):
+            lbl.config(text=f"{hour:02}:00\r{extra_text}")
 
     def checkbox_value_changed(self, nr: int, day: int):
         """

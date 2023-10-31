@@ -26,8 +26,6 @@ def test():
     cntr = 0
     try:
         sch = HourlySchedule2days("Test schedule")
-        #TODO: fix test function
-        sch.add_to_device_list(cb1)
         sch.set_schedule_hour_off_on(today_tomorrow=True, hour=12, cmd=True)
         sch.set_schedule_hour_off_on(today_tomorrow=True, hour=1, cmd=True)
         while (True):
@@ -36,10 +34,6 @@ def test():
             time.sleep(1)
     except KeyboardInterrupt:
         print("Test stopped")
-
-
-def cb1(cmd: bool):
-    print(f"Callback 1 {cmd}")
 
 
 class HourlySchedule2days(Subject):

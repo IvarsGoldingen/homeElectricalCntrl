@@ -22,6 +22,7 @@ logger.addHandler(file_handler)
 
 class AutoHourlyScheduleCreatorWidget(tk.Frame):
     """
+    Widget for AutoHourlyScheduleCreator
     """
     # UI constants
     BTN_WIDTH = 30

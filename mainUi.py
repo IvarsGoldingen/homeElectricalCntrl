@@ -2,11 +2,12 @@
 Application for controlling home automation:
 *Control and monitoring of MQTT devices
 *Creating schedules according to electricity price
-TODO: Continue with implementing daily timed schedule
+TODO: implement AHU device
+TODO: store data in DB
+TODO: graphs for stored values
 TODO: load devices, schedules etc from files, allow creation of new ones automatically
 TODO: use device lists instead of single test device - same for schedule
-TODO: Use listener design pattern
-TODO: When getting prices from NP UI is not updated
+TODO: Ability to associate devices with schedules from UI
 TODO: MQTT security
 """
 
@@ -139,18 +140,18 @@ class MainUIClass(Tk, Observer):
 
     def setup_schedules(self):
         self.schedule_2days = HourlySchedule2days("2 DAY SCHEDULE")
-
-        self.schedule_2days.add_to_device_list(self.plug1)
+        # self.schedule_2days.add_to_device_list(self.plug1)
         self.auto_sch_creator = AutoScheduleCreator(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                     hourly_schedule=self.schedule_2days)
         self.alarm_clock = DailyTimedSchedule(name="Alarm clock")
+        self.alarm_clock.add_device(self.plug1)
 
     def setup_devices(self):
         """
         Setup automation devices
         :return:
         """
-        self.plug1 = ShellyPlug(name="Towel dryer",
+        self.plug1 = ShellyPlug(name="Plug 1",
                                 mqtt_publish=self.mqtt_client.my_publish_callback,
                                 plug_id="shellyplug-s-80646F840029")
         self.mqtt_client.add_to_subscription_dict(self.plug1.listen_topic, self.plug1.process_received_mqtt_data)

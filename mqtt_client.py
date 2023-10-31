@@ -103,7 +103,6 @@ class MyMqttClient(mqtt.Client, Subject):
             self.notify_observers(self.event_name_status_change)
             self.subscribe_to_device_topics()
         else:
-            # TODO: handle automatic reconnection attempt after delay
             logger.warning(f"Unable to connect to MQTT broker")
 
     def on_disconnect(self, client, userdata, rc):

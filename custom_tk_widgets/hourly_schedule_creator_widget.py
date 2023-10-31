@@ -22,7 +22,7 @@ logger.addHandler(file_handler)
 
 class HourlyScheduleCreatorWidget(tk.Frame):
     """
-    TODO:comment this
+    Widget for creating schedules according to electricity price
     """
     # UI constants
     BTN_WIDTH = 15
@@ -33,7 +33,8 @@ class HourlyScheduleCreatorWidget(tk.Frame):
     def __init__(self, parent, fc_to_call: Callable[[float, int, int, int], None]):
         """
         :param parent: parent view
-        :param fc_to_call: method to call with the results
+        :param fc_to_call: method to call for schedule creation. Variables are max_total_float, hours_ahead_int,
+        max_h_int, min_h_int see the schedule creator class
         """
         super().__init__(parent, borderwidth=2, relief="solid")
         self.callable = fc_to_call

@@ -3,9 +3,7 @@ import logging
 from functools import partial
 import tkinter as tk
 from tkinter import Label, Button, font, Text
-from typing import Callable
 from schedules.daily_timed_schedule import DailyTimedSchedule
-from observer_pattern import Observer
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -25,7 +23,7 @@ logger.addHandler(file_handler)
 
 class DailyTimedScheduleCreatorWidget(tk.Frame):
     """
-    TODO:comment this
+    Widget for DailyTimedScheduleCreator
     """
     # UI constants
     BTN_WIDTH = 30
@@ -37,7 +35,7 @@ class DailyTimedScheduleCreatorWidget(tk.Frame):
     def __init__(self, parent, sch: DailyTimedSchedule):
         """
         :param parent: parent view
-        :param fc_to_call: method to call with the results
+        :param sch: DailyTimedScheduleCreator associated with the widget
         """
         super().__init__(parent, borderwidth=2, relief="solid")
         self.sch = sch

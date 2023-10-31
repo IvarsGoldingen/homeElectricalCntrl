@@ -24,6 +24,7 @@ file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 
+
 class Device(Subject):
     # TODO: use ENUM here
     STATUS_FAULT = 0
@@ -95,7 +96,7 @@ class Device(Subject):
         # The final command is written in man_run so return that
         return self._man_run
 
-    def set_auto_run(self,  off_on: bool):
+    def set_auto_run(self, off_on: bool):
         """
         control the device in auto mode
         :param off_on: turn the device on or off - auto mode only
@@ -136,7 +137,6 @@ class Device(Subject):
         """
         off_on_to_use = False if self._block else off_on
         return off_on_to_use
-
 
     @abstractmethod
     def _turn_device_off_on(self, off_on: bool):
