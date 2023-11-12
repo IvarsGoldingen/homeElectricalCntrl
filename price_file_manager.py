@@ -39,6 +39,11 @@ def test():
 
 
 class PriceFileManager(Subject):
+    """
+    TODO:
+    Possibly hold all available prices in global variables since the prices may be accessed often
+    Instead of using todays and tomorrows dictionary save prices in a data class
+    """
     PRICE_FILE_EXTENSION = ".prc"
     NORDPOOL_PRICE_OFSET_HOURS = 1
     # Time at which tomorrow's NP prices expected to be available
@@ -46,7 +51,11 @@ class PriceFileManager(Subject):
     TOMORROW_AVAILABLE_EARLIEST_MINUTE = 55
     # To limit how often np gets polled
     MIN_NP_POLL_TIME_SEC = 900  # 900 = 15 min
+    # event names as this class extends from subject
+    # new prices, either from file or np. Also can mean new day.
     event_name_prices_changed = "prices_changed"
+    # new prices from np available
+    event_name_new_prices = "new_prices_available"
 
     def __init__(self, file_loc: str):
         super().__init__()
@@ -123,6 +132,7 @@ class PriceFileManager(Subject):
         if self.get_prices_tomorrow_from_np():
             logger.debug("Got prices from Nordpool")
             self.notify_observers(self.event_name_prices_changed)
+            self.notify_observers(self.event_name_new_prices)
             return
         logger.debug("Did NOT get prices from Nordpool")
 

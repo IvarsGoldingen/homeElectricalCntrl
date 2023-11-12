@@ -4,7 +4,7 @@ Application for controlling home automation:
 *Creating schedules according to electricity price
 TODO: implement AHU device
 TODO: store data in DB
-TODO: graphs for stored values
+TODO: graphs for stored values (Grafana?)
 TODO: load devices, schedules etc from files, allow creation of new ones automatically
 TODO: use device lists instead of single test device - same for schedule
 TODO: Ability to associate devices with schedules from UI
@@ -28,6 +28,7 @@ from schedules.daily_timed_schedule import DailyTimedSchedule
 from custom_tk_widgets.auto_hourly_schedule_creator_widget import AutoHourlyScheduleCreatorWidget
 from custom_tk_widgets.daily_timed_schedule_widget import DailyTimedScheduleCreatorWidget
 from observer_pattern import Observer
+from data_logger import DataLogger
 import secrets
 
 # Setup logging
@@ -62,7 +63,6 @@ class MainUIClass(Tk, Observer):
     LOOP_PRICE_MNGR_INTERVAL_S = 10.0
     # UI constants
     BTN_WIDTH = 60
-    HOUR_WIDTH = 6
     # For determining if checkbox of today or tomorrow pressed
     KEY_TODAY = 1
     KEY_TOMORROW = 2
@@ -72,10 +72,10 @@ class MainUIClass(Tk, Observer):
 
     def __init__(self):
         super().__init__()
+        logger.info("Program started")
         # Threads for repeated tasks
         self.device_thread, self.schedule_thread, self.price_mngr_thread = None, None, None
-        logger.info("Program started")
-        # Variables that determine how often certain functions are called
+
         self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
                                         psw=secrets.MQTT_PSW)
         self.mqtt_client.register(self, MyMqttClient.event_name_status_change)
@@ -84,6 +84,7 @@ class MainUIClass(Tk, Observer):
         self.setup_devices()
         self.setup_schedules()
         self.set_up_ui()
+        self.setup_db_logger()
         self.mqtt_client.start()
         self.update_mqtt_status()
         # Call repeated tasks after creation of UI
@@ -91,6 +92,10 @@ class MainUIClass(Tk, Observer):
         self.device_threaded_loop()
         self.schedule_threaded_loop()
         self.mainloop()
+
+    def setup_db_logger(self):
+        self.db_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow)
+        self.price_mngr.register(self.db_logger, PriceFileManager.event_name_prices_changed)
 
     def init_mqtt_client(self):
         self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,

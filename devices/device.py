@@ -26,7 +26,8 @@ logger.addHandler(file_handler)
 
 
 class Device(Subject):
-    # TODO: use ENUM here
+    # Types of devices
+
     STATUS_FAULT = 0
     STATUS_MAN_ON = 1
     STATUS_MAN_OFF = 2
@@ -104,6 +105,7 @@ class Device(Subject):
         """
         if off_on != self._auto_run:
             self._auto_run = off_on
+            # notify observers only if state changes
             self.notify_observers(self.event_name_status_changed)
         if not self.auto_man:
             # device in auto mode
