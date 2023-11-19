@@ -237,6 +237,8 @@ class MainUIClass(Tk, Observer):
         self.device_thread.cancel()
         self.schedule_thread.cancel()
         self.price_mngr_thread.cancel()
+        # Stop DB manager
+        self.db_logger.stop()
         # Stpo MQTT client
         self.mqtt_client.stop()
         # Close tkinter UI

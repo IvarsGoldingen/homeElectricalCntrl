@@ -1,5 +1,9 @@
 import logging
 import os
+from enum import Enum, auto
+import queue
+import time
+import threading
 from datetime import datetime, timedelta
 from typing import Callable, Dict, Tuple
 from observer_pattern import Observer
@@ -35,13 +39,20 @@ class DataLogger(Observer):
     Periodical and on data change logging
     """
 
+    class LogType(Enum):
+        PRICE_LOG = auto()
+        SHELLY_LOG = auto()
+        STOP_LOG = auto()
+
     def __init__(self, get_prices_method: Callable[[], Tuple[Dict, Dict]], device_list: list[Device]):
         self.get_prices_method = get_prices_method
-        self.db_mngr = DbMngr()
         self.device_list = device_list
+        self.data_queue = queue.Queue()
+        self.db_thread = threading.Thread(target=self.db_mngr_thread_method, args=(self.data_queue,))
+        self.db_thread.start()
 
     def handle_subject_event(self, event_type: str, *args, **kwargs):
-        logger.debug(f"Received event {event_type}")
+        # Handle events initiated by devices this class is listening to
         if event_type == PriceFileManager.event_name_prices_changed:
             self.get_and_store_prices()
         elif event_type == Device.event_name_status_changed:
@@ -55,22 +66,20 @@ class DataLogger(Observer):
             self.handle_device_event(device_type, device_name)
 
     def handle_device_event(self, device_type: DeviceType, device_name: str):
+        # Log data for different devices
         logger.debug(f"Handling device event type {device_type}, name {device_name}")
         dev_to_log = self.get_device_by_name(device_name)
         if not dev_to_log:
             logger.error("Device with specific name not in device list")
             return
         if device_type == DeviceType.SHELLY_PLUG:
-            self.log_shelly_data(dev_to_log)
+            self.data_queue.put({"log_type": self.LogType.SHELLY_LOG, "data": dev_to_log})
+            # self.log_shelly_data(dev_to_log)
         else:
             logger.error(f"Device type not recognised {device_type}")
 
-    def log_shelly_data(self, dev: ShellyPlug):
-        logger.debug("Logging shelly data")
-        self.db_mngr.insert_shelly_data(dev.name, dev.state_off_on, dev.power,
-                                        dev.get_status(), dev.energy)
-
     def get_device_by_name(self, device_name):
+        # get device object by name
         for dev in self.device_list:
             if dev.name == device_name:
                 return dev
@@ -81,9 +90,40 @@ class DataLogger(Observer):
         today_date = datetime.today().date()
         tomorrows_date = today_date + timedelta(days=1)
         prices_today, prices_tomorrow = self.get_prices_method()
-        self.db_mngr.insert_prices(prices_today, today_date)
-        self.db_mngr.insert_prices(prices_tomorrow, tomorrows_date)
+        self.data_queue.put({"log_type": self.LogType.PRICE_LOG, "data": (prices_today, today_date)})
+        self.data_queue.put({"log_type": self.LogType.PRICE_LOG, "data": (prices_tomorrow, tomorrows_date)})
 
+    def stop(self):
+        self.data_queue.put({"log_type": self.LogType.STOP_LOG})
+
+    def db_mngr_thread_method(self, data_queue):
+        """
+        Worker running on seperate thread. handles data storage in database.
+        :param data_queue: queue for data exchange with main thread
+        :return:
+        """
+        self.db_mngr = DbMngr()
+        run = True
+        while run:
+            while not data_queue.empty():
+                data = self.data_queue.get()
+                if data["log_type"] == self.LogType.SHELLY_LOG:
+                    # receive data shelly plug data
+                    self.log_shelly_data(data["data"])
+                elif data["log_type"] == self.LogType.PRICE_LOG:
+                    # Received price data
+                    prices_dic, price_date = data["data"]
+                    self.db_mngr.insert_prices(prices_dic, price_date)
+                elif data["log_type"] == self.LogType.STOP_LOG:
+                    # Stopping data base thread
+                    run = False
+            time.sleep(0.5)
+        # close db manager
+        self.db_mngr.stop()
+
+    def log_shelly_data(self, dev: ShellyPlug):
+        self.db_mngr.insert_shelly_data(dev.name, dev.state_off_on, dev.power,
+                                        dev.get_status(), dev.energy)
 
 
 if __name__ == '__main__':
