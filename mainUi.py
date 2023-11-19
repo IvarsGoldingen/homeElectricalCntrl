@@ -94,8 +94,11 @@ class MainUIClass(Tk, Observer):
         self.mainloop()
 
     def setup_db_logger(self):
-        self.db_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow)
+        self.db_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
+                                    device_list=self.dev_list)
         self.price_mngr.register(self.db_logger, PriceFileManager.event_name_prices_changed)
+        for dev in self.dev_list:
+            dev.register(self.db_logger, Device.event_name_status_changed)
 
     def init_mqtt_client(self):
         self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
@@ -156,10 +159,12 @@ class MainUIClass(Tk, Observer):
         Setup automation devices
         :return:
         """
+        self.dev_list = []
         self.plug1 = ShellyPlug(name="Plug 1",
                                 mqtt_publish=self.mqtt_client.my_publish_callback,
                                 plug_id="shellyplug-s-80646F840029")
         self.mqtt_client.add_to_subscription_dict(self.plug1.listen_topic, self.plug1.process_received_mqtt_data)
+        self.dev_list.append(self.plug1)
 
     def set_up_ui(self):
         # Set up user interface
@@ -190,6 +195,7 @@ class MainUIClass(Tk, Observer):
         self.btn_2 = Button(self.frame_extra_btns, text='TEST 2', command=self.test_btn_2, width=self.BTN_WIDTH)
         self.plug_widget = ShellyPlugWidget(parent=self, device=self.plug1)
         self.plug1.register(self.plug_widget, Device.event_name_status_changed)
+        self.plug1.register(self.plug_widget, ShellyPlug.event_name_new_extra_data)
         self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)

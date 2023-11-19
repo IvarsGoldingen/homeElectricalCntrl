@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import logging
 import os
+from devices.deviceTypes import DeviceType
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -24,6 +25,7 @@ A device(plug) would be the subject. The observer for it would be a widget in th
 the widget is registered to the plug. Any change od the device would be shown in UI.
 """
 
+
 class Subject(ABC):
     def __init__(self):
         self._observers = {}
@@ -37,12 +39,22 @@ class Subject(ABC):
         if event_type in self._observers:
             self._observers[event_type].remove(observer)
 
-    def notify_observers(self, event_type):
+    def notify_observers(self, event_type: str, *args, **kwargs):
         if event_type in self._observers:
             for observer in self._observers[event_type]:
-                observer.handle_subject_event(event_type)
+                observer.handle_subject_event(event_type, *args, **kwargs)
+
+
+class SimpleSubject(Subject):
+    def simple_notify(self, event_name):
+        self.notify_observers(event_name)
+
+
+class DeviceSubject(Subject):
+    def device_notify(self, event_name: str, device_name: str, device_type: DeviceType):
+        self.notify_observers(event_name, device_name=device_name, device_type=device_type)
 
 
 class Observer(ABC):
-    def handle_subject_event(self, event_type: str):
+    def handle_subject_event(self, event_type: str, *args, **kwargs):
         pass

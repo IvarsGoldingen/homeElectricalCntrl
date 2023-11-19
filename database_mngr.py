@@ -45,7 +45,7 @@ class DbMngr:
         self.db_name = db_name
         self.db_loc = db_loc
         db_w_path = os.path.join(db_loc, db_name)
-        self.conn = sqlite3.connect(db_w_path)
+        self.conn = sqlite3.connect(db_w_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
 
     def create_all_tables(self):

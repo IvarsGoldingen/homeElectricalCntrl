@@ -4,12 +4,12 @@ For controllingand monitoring a shelly smart plug
 Mqtt must be enabled from the webservice of the device
 """
 import time
-
-from devices.mqttDevice import MqttDevice
-from devices.device import Device
 from typing import Callable
 import logging
 import os
+from devices.deviceTypes import DeviceType
+from devices.mqttDevice import MqttDevice
+from devices.device import Device
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -46,6 +46,7 @@ class ShellyPlug(MqttDevice):
     TIME_SINCE_LAST_MSG_TO_CONSIDER_ONLINE_S = 60
     # Value that is received from MQTT when there is no overtemperature
     OVERTEMPERATURE_OK = 0
+    event_name_new_extra_data = "device_new_extra_data"
 
 
     def __init__(self, plug_id: str, mqtt_publish: Callable[[str, str], None], name: str = "Test shelly plug"):
@@ -54,7 +55,7 @@ class ShellyPlug(MqttDevice):
         :param mqtt_publish: method to call when a mqtt message should be published
         :param name: device name - for logs and UI
         """
-        super().__init__(mqtt_publish, name)
+        super().__init__(mqtt_publish, name=name, device_type=DeviceType.SHELLY_PLUG)
         self.plug_id = plug_id
         # Used to check wether device is available
         self.time_of_last_msg = 0
@@ -103,7 +104,7 @@ class ShellyPlug(MqttDevice):
         online = False if time_since_last_msg > self.TIME_SINCE_LAST_MSG_TO_CONSIDER_ONLINE_S else True
         if online != self.state_online:
             logger.debug(f"{self.name} went online" if online else f"{self.name} went offline")
-            self.notify_observers(self.event_name_status_changed)
+            self.device_notify(self.event_name_new_extra_data, self.name, self.device_type)
             self.state_online = online
 
     def check_cmd_vs_actual_state(self):
@@ -150,8 +151,7 @@ class ShellyPlug(MqttDevice):
                 except ValueError:
                     # Handle conversion errors
                     logger.debug(f"Value error {data} in topic {topic}")
-            logger.debug(f"notify_observers 1")
-            self.notify_observers(self.event_name_status_changed)
+            self.device_notify(self.event_name_new_extra_data, self.name, self.device_type)
         else:
             # Handle unrecognized topics if needed
             logger.debug("Unhandled MQTT msg:")
@@ -162,7 +162,7 @@ class ShellyPlug(MqttDevice):
         if self.overtemperature != self.OVERTEMPERATURE_OK:
             logger.warning(f"Overtemperature {self.name}")
             self.set_block(True)
-            self.notify_observers(self.event_name_status_changed)
+            self.device_notify(self.event_name_new_extra_data, self.name, self.device_type)
 
     def _turn_device_off_on(self, off_on: bool):
         """

@@ -50,7 +50,7 @@ class DeviceWidget(tk.Frame, Observer):
         self.btn_man_on.grid(row=3, column=0)
         self.btn_man_off.grid(row=3, column=1)
 
-    def handle_subject_event(self, event_type: str):
+    def handle_subject_event(self, event_type: str, *args, **kwargs):
         self.update_widget()
 
     def update_widget(self):
