@@ -6,10 +6,14 @@ from devices.deviceTypes import DeviceType
 
 def main_fc():
     db_mngr = DbMngr()
-    db_mngr.create_all_tables()
+    #db_mngr.create_all_tables()
+    db_mngr.insert_device(dev_type=DeviceType.FAKE.value,
+                          name="Plug 1",
+                          plug_id="shellyplug-s-80646F840029",
+                          active=True)
     # insert_fake_devices(db_mngr)
     # insert_fake_prices(db_mngr)
-    insert_fake_shelly_data(db_mngr)
+    # insert_fake_shelly_data(db_mngr)
     db_mngr.stop()
 
 def insert_fake_devices(db_mngr):

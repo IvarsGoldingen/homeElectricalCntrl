@@ -104,8 +104,8 @@ class ShellyPlug(MqttDevice):
         online = False if time_since_last_msg > self.TIME_SINCE_LAST_MSG_TO_CONSIDER_ONLINE_S else True
         if online != self.state_online:
             logger.debug(f"{self.name} went online" if online else f"{self.name} went offline")
-            self.device_notify(self.event_name_new_extra_data, self.name, self.device_type)
             self.state_online = online
+            self.device_notify(self.event_name_new_extra_data, self.name, self.device_type)
 
     def check_cmd_vs_actual_state(self):
         if not self.state_online:
@@ -171,6 +171,9 @@ class ShellyPlug(MqttDevice):
         :param off_on: false = turn off, true = turn on
         :return:
         """
+        if self.state_online and self.get_cmd_given() == self.state_off_on:
+            # Device state equal to cmd, no need to send msg to mqtt
+            return
         publish_payload = "on" if off_on else "off"
         self.mqtt_publish(self.publish_topic, publish_payload)
 

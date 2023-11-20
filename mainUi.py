@@ -61,6 +61,8 @@ class MainUIClass(Tk, Observer):
     LOOP_SCHEDULE_INTERVAL_S = 1.0
     # How often should the price manager be called
     LOOP_PRICE_MNGR_INTERVAL_S = 10.0
+    # How often should the mqtt client loop be called
+    LOOP_MQTT_INTERVAL_S = 0.3
     # UI constants
     BTN_WIDTH = 60
     # For determining if checkbox of today or tomorrow pressed
@@ -74,10 +76,9 @@ class MainUIClass(Tk, Observer):
         super().__init__()
         logger.info("Program started")
         # Threads for repeated tasks
-        self.device_thread, self.schedule_thread, self.price_mngr_thread = None, None, None
-
-        self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
-                                        psw=secrets.MQTT_PSW)
+        self.device_thread, self.schedule_thread, self.price_mngr_thread, self.mqtt_thread = None, None, None, None
+        self.mqtt_client = MyMqttClient()
+        # UI displays MQTT status, subscribe to status changes
         self.mqtt_client.register(self, MyMqttClient.event_name_status_change)
         self.price_mngr = PriceFileManager(self.PRICE_FILE_LOCATION)
         self.price_mngr.register(self, PriceFileManager.event_name_prices_changed)
@@ -85,13 +86,19 @@ class MainUIClass(Tk, Observer):
         self.setup_schedules()
         self.set_up_ui()
         self.setup_db_logger()
-        self.mqtt_client.start()
+        # Start MQTT client only after all devices created, so the topics are listed
+        self.mqtt_client.start(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
+                               psw=secrets.MQTT_PSW)
         self.update_mqtt_status()
         # Call repeated tasks after creation of UI
         self.price_mngr_threaded_loop()
         self.device_threaded_loop()
         self.schedule_threaded_loop()
-        self.mainloop()
+        self.mqtt_threaded_loop()
+        try:
+            self.mainloop()
+        except KeyboardInterrupt:
+            logger.info("KeyboardInterrupt")
 
     def setup_db_logger(self):
         self.db_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
@@ -100,16 +107,15 @@ class MainUIClass(Tk, Observer):
         for dev in self.dev_list:
             dev.register(self.db_logger, Device.event_name_status_changed)
 
-    def init_mqtt_client(self):
-        self.mqtt_client = MyMqttClient(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
-                                        psw=secrets.MQTT_PSW)
-        self.mqtt_client.register(self, MyMqttClient.event_name_status_change)
-        self.mqtt_client.start()
-
     def mainloop_user(self):
         # Not used, instead Timer from Threading used
         # Start the loop again after delay
         self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)
+
+    def mqtt_threaded_loop(self):
+        self.mqtt_client.loop()
+        self.mqtt_thread = Timer(self.LOOP_MQTT_INTERVAL_S, self.mqtt_threaded_loop)
+        self.mqtt_thread.start()
 
     def price_mngr_threaded_loop(self):
         # Execute this same function in regular intervals
@@ -131,7 +137,7 @@ class MainUIClass(Tk, Observer):
         self.device_thread = Timer(self.LOOP_DEVICES_INTERVAL_S, self.device_threaded_loop)
         self.device_thread.start()
 
-    def handle_subject_event(self, event_type: str):
+    def handle_subject_event(self, event_type: str, *args, **kwargs):
         logger.debug(f"Received event {event_type}")
         if event_type == PriceFileManager.event_name_prices_changed:
             self.populate_ui_with_el_prices()
@@ -143,8 +149,9 @@ class MainUIClass(Tk, Observer):
         Update MQTT client status in the UI
         :return:
         """
+        txt_color = "green" if self.mqtt_client.status == MyMqttClient.MqttClientThread.STATUS_CONNECTED else "red"
         new_text = self.mqtt_client.status_strings.get(self.mqtt_client.status, "UNKNOWN")
-        self.lbl_status.config(text=new_text)
+        self.lbl_status.config(text=new_text, fg=txt_color)
 
     def setup_schedules(self):
         self.schedule_2days = HourlySchedule2days("2 DAY SCHEDULE")
@@ -161,9 +168,9 @@ class MainUIClass(Tk, Observer):
         """
         self.dev_list = []
         self.plug1 = ShellyPlug(name="Plug 1",
-                                mqtt_publish=self.mqtt_client.my_publish_callback,
+                                mqtt_publish=self.mqtt_client.publish,
                                 plug_id="shellyplug-s-80646F840029")
-        self.mqtt_client.add_to_subscription_dict(self.plug1.listen_topic, self.plug1.process_received_mqtt_data)
+        self.mqtt_client.add_listen_topic(self.plug1.listen_topic, self.plug1.process_received_mqtt_data)
         self.dev_list.append(self.plug1)
 
     def set_up_ui(self):
@@ -207,7 +214,6 @@ class MainUIClass(Tk, Observer):
         self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_schedule_change)
         self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_new_device_associated)
 
-
     def place_ui_elements(self):
         """
         Place created UI elements
@@ -237,12 +243,14 @@ class MainUIClass(Tk, Observer):
         self.device_thread.cancel()
         self.schedule_thread.cancel()
         self.price_mngr_thread.cancel()
+        self.mqtt_thread.cancel()
         # Stop DB manager
         self.db_logger.stop()
         # Stpo MQTT client
         self.mqtt_client.stop()
         # Close tkinter UI
-        self.destroy()
+        if hasattr(self, 'winfo_exists') and self.winfo_exists():
+            self.destroy()
 
 
 if __name__ == '__main__':
