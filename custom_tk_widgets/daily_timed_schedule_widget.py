@@ -95,7 +95,7 @@ class DailyTimedScheduleCreatorWidget(tk.Frame):
             on_time_int = int(on_time)
             if self.sch:
                 self.sch.set_settings(hour_on=start_hour_int, minute_on=start_minute_int, on_time_min=on_time_int)
-            self.lbl_title.config(text="ALARM CLOCK")
+            self.lbl_title.config(text=self.sch.name)
         except ValueError:
             self.lbl_title.config(text="INVALID INPUT")
 
@@ -128,7 +128,7 @@ class DailyTimedScheduleCreatorWidget(tk.Frame):
     def _prepare_widget_elements(self):
         # Create a custom font with bold style
         bold_font = font.Font(family="Helvetica", size=12, weight="bold")
-        self.lbl_title = Label(self, text="ALARM CLOCK", font=bold_font)
+        self.lbl_title = Label(self, text=self.sch.name, font=bold_font)
         self.lbl_associated_devices = Label(self, text="No associated devices")
         self.lbl_status = Label(self, text="Off")
         self.lbl_hour_start = Label(self, text="START HOUR", width=self.LABEL_WIDTH)

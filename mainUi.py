@@ -6,7 +6,6 @@ TODO: implement AHU device
 TODO: store data in DB
 TODO: graphs for stored values (Grafana?)
 TODO: load devices, schedules etc from files, allow creation of new ones automatically
-TODO: use device lists instead of single test device - same for schedule
 TODO: Ability to associate devices with schedules from UI
 TODO: MQTT security
 """
