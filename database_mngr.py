@@ -7,14 +7,22 @@ from devices.deviceTypes import DeviceType
 def main_fc():
     db_mngr = DbMngr()
     #db_mngr.create_all_tables()
-    db_mngr.insert_device(dev_type=DeviceType.FAKE.value,
-                          name="Plug 1",
-                          plug_id="shellyplug-s-80646F840029",
-                          active=True)
+    insert_new_device_in_dev_table(db_mngr)
     # insert_fake_devices(db_mngr)
     # insert_fake_prices(db_mngr)
     # insert_fake_shelly_data(db_mngr)
     db_mngr.stop()
+
+def insert_new_device_in_dev_table(db_mngr):
+    # device name must be equal to the name in the program for logging to work properly
+    # db_mngr.insert_device(dev_type=DeviceType.SHELLY_PLUG.value,
+    #                       name="Plug 1",
+    #                       plug_id="shellyplug-s-80646F840029",
+    #                       active=True)
+    db_mngr.insert_device(dev_type=DeviceType.SHELLY_PLUG.value,
+                          name="Plug 2",
+                          plug_id="shellyplug-s-C8C9A3B8E92E",
+                          active=True)
 
 def insert_fake_devices(db_mngr):
     db_mngr.insert_device(dev_type=DeviceType.FAKE.value, name="sample_device1", plug_id="111", active=True)
@@ -38,7 +46,10 @@ def insert_fake_shelly_data(db_mngr):
 class DbMngr:
     """
     Class for storing home automation related data in database
-    TODO: Extend from thread
+    Project has 3 tables:
+    devices - list of devices used in the project
+    prices - electricity prices
+    shelly_data - data containing shelly smartplug data
     TODO: Auto delete data older than
     """
     def __init__(self, db_name: str = "home_data.db", db_loc: str = "C:\\py_related\\home_el_cntrl\\db"):

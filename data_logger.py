@@ -16,16 +16,16 @@ from database_mngr import DbMngr
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(logging.DEBUG)
+stream_handler.setLevel(logging.INFO)
 logger.addHandler(stream_handler)
 # File logger
 file_handler = logging.FileHandler(os.path.join("logs", "data_logger.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 
@@ -37,6 +37,7 @@ class DataLogger(Observer):
     """
     Class for logging historical data of home automation program
     Periodical and on data change logging
+    TODO: implement periodical logging
     """
 
     class LogType(Enum):

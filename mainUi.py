@@ -18,6 +18,7 @@ from tkinter import Tk, Label, Button, Frame
 import logging
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.device import Device
+from devices.deviceTypes import DeviceType
 from mqtt_client import MyMqttClient
 from price_file_manager import PriceFileManager
 from custom_tk_widgets.shelly_plug_widget import ShellyPlugWidget
@@ -128,12 +129,14 @@ class MainUIClass(Tk, Observer):
         self.schedule_2days.loop()
         self.auto_sch_creator.loop()
         self.alarm_clock.loop()
+        self.christmas_lights.loop()
         self.schedule_thread = Timer(self.LOOP_SCHEDULE_INTERVAL_S, self.schedule_threaded_loop)
         self.schedule_thread.start()
 
     def device_threaded_loop(self):
         # Execute this same function in regular intervals
-        self.plug1.loop()
+        for dev in self.dev_list:
+            dev.loop()
         self.device_thread = Timer(self.LOOP_DEVICES_INTERVAL_S, self.device_threaded_loop)
         self.device_thread.start()
 
@@ -160,6 +163,9 @@ class MainUIClass(Tk, Observer):
                                                     hourly_schedule=self.schedule_2days)
         self.alarm_clock = DailyTimedSchedule(name="Alarm clock")
         self.alarm_clock.add_device(self.plug1)
+        self.christmas_lights = DailyTimedSchedule(name="Christmas lights")
+        self.christmas_lights.add_device(self.plug2)
+
 
     def setup_devices(self):
         """
@@ -170,8 +176,18 @@ class MainUIClass(Tk, Observer):
         self.plug1 = ShellyPlug(name="Plug 1",
                                 mqtt_publish=self.mqtt_client.publish,
                                 plug_id="shellyplug-s-80646F840029")
-        self.mqtt_client.add_listen_topic(self.plug1.listen_topic, self.plug1.process_received_mqtt_data)
+        self.plug2 = ShellyPlug(name="Plug 2",
+                                mqtt_publish=self.mqtt_client.publish,
+                                plug_id="shellyplug-s-C8C9A3B8E92E")
         self.dev_list.append(self.plug1)
+        self.dev_list.append(self.plug2)
+        for dev in self.dev_list:
+            if dev.device_type == DeviceType.SHELLY_PLUG:
+                # if device is an MQTT device, register the topic that should be subscribed to and a callback
+                # for receiving messages from that topic
+                self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)
+
+
 
     def set_up_ui(self):
         # Set up user interface
@@ -196,13 +212,21 @@ class MainUIClass(Tk, Observer):
         Create UI elements
         """
         self.lbl_status = Label(self, text='MQTT STATUS')
+        # Buttons for debuggin or extra features
         self.frame_extra_btns = Frame(self)
         self.btn_1 = Button(self.frame_extra_btns, text='OPEN PRICE FILE FOLDER',
                             command=self.open_price_file_folder, width=self.BTN_WIDTH)
         self.btn_2 = Button(self.frame_extra_btns, text='TEST 2', command=self.test_btn_2, width=self.BTN_WIDTH)
-        self.plug_widget = ShellyPlugWidget(parent=self, device=self.plug1)
-        self.plug1.register(self.plug_widget, Device.event_name_status_changed)
-        self.plug1.register(self.plug_widget, ShellyPlug.event_name_new_extra_data)
+        self.frame_devices = Frame(self)
+        # Place all widgets in one frame
+        self.dev_widgets = []
+        for dev in self.dev_list:
+            if dev.device_type == DeviceType.SHELLY_PLUG:
+                shelly_widget = ShellyPlugWidget(parent=self.frame_devices, device=dev)
+                dev.register(shelly_widget, Device.event_name_status_changed)
+                dev.register(shelly_widget, ShellyPlug.event_name_new_extra_data)
+                self.dev_widgets.append(shelly_widget)
+        # Create schedule widgets and register them as listeners for desired schedules
         self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)
@@ -213,6 +237,10 @@ class MainUIClass(Tk, Observer):
                                                                   sch=self.alarm_clock)
         self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_schedule_change)
         self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_new_device_associated)
+        self.christmas_lights_widget = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
+                                                                  sch=self.christmas_lights)
+        self.christmas_lights.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_schedule_change)
+        self.christmas_lights.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_new_device_associated)
 
     def place_ui_elements(self):
         """
@@ -224,11 +252,14 @@ class MainUIClass(Tk, Observer):
         # Main grid
         self.lbl_status.grid(row=0, column=0)
         self.frame_extra_btns.grid(row=1, column=0)
-        self.plug_widget.grid(row=2, column=0)
+        self.frame_devices.grid(row=2, column=0)
+        for i, widget in enumerate(self.dev_widgets):
+            widget.grid(row=0, column=i)
         self.schedule_widget.grid(row=3, column=0)
         self.frame_widgets_bottom.grid(row=4, column=0)
         self.auto_schedule_creator_widget.grid(row=0, column=0)
         self.alarm_clock_widget.grid(row=0, column=1)
+        self.christmas_lights_widget.grid(row=0, column=2)
 
     def open_price_file_folder(self):
         subprocess.Popen(['explorer', self.PRICE_FILE_LOCATION])

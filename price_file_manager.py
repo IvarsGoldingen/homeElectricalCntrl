@@ -105,6 +105,7 @@ class PriceFileManager(Subject):
         # For today just try to read the file, if it does not exist there will be an empty dict
         date_today = datetime.date.today()
         prices_today = self.read_prices_file_into_dict(self.create_date_file_path(date_today))
+        logger.debug(f"get_prices_today_tomorrow")
         logger.debug(f"Prices today {prices_today}")
         # For tomorrow it is possible to check if nordpool has the prices if there is no file yet or if the file has too
         # few values
