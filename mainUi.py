@@ -238,8 +238,8 @@ class MainUIClass(Tk, Observer):
         self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_new_device_associated)
         self.christmas_lights_widget = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
                                                                   sch=self.christmas_lights)
-        self.christmas_lights.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_schedule_change)
-        self.christmas_lights.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_new_device_associated)
+        self.christmas_lights.register(self.christmas_lights_widget, DailyTimedSchedule.event_name_schedule_change)
+        self.christmas_lights.register(self.christmas_lights_widget, DailyTimedSchedule.event_name_new_device_associated)
 
     def place_ui_elements(self):
         """
