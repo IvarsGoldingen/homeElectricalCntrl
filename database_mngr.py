@@ -61,7 +61,7 @@ class DbMngr:
     """
 
     def __init__(self, db_name: str = "home_data.db",
-                 db_loc: str = "C:\\py_related\\home_el_cntrl\\db\\from_production_pc"):
+                 db_loc: str = "C:\\py_related\\home_el_cntrl\\db"):
         """
         :param db_name: database name
         :param db_loc: database location

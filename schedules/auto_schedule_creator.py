@@ -53,7 +53,7 @@ class AutoScheduleCreator:
                  max_hours_to_run: int = 5,
                  min_hours_to_run: int = 2):
         self._get_prices_method = get_prices_method
-        self._auto_create_enabled = False
+        self._auto_create_enabled = True
         self._auto_create_period = auto_create_period
         self._hourly_schedule = hourly_schedule
         # settings for schedule
