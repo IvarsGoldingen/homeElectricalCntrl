@@ -2,6 +2,7 @@
 Application for controlling home automation:
 *Control and monitoring of MQTT devices
 *Creating schedules according to electricity price
+TODO: save time values in UTC
 TODO: implement AHU device
 TODO: store data in DB
 TODO: graphs for stored values (Grafana?)
@@ -160,9 +161,9 @@ class MainUIClass(Tk, Observer):
         # self.schedule_2days.add_to_device_list(self.plug1)
         self.auto_sch_creator = AutoScheduleCreator(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                     hourly_schedule=self.schedule_2days)
-        self.alarm_clock = DailyTimedSchedule(name="Alarm clock")
+        self.alarm_clock = DailyTimedSchedule(name="Alarm clock", hour_on=7, minute_on=00, on_time_min=15)
         self.alarm_clock.add_device(self.plug1)
-        self.christmas_lights = DailyTimedSchedule(name="Christmas lights")
+        self.christmas_lights = DailyTimedSchedule(name="Christmas lights", hour_on=18, minute_on=00, on_time_min=240)
         self.christmas_lights.add_device(self.plug2)
 
 
