@@ -121,6 +121,9 @@ class DataLogger(Observer):
         self.periodical_log_thread.cancel()
         # Stop database thread
         self.data_queue.put({"log_type": self.LogType.STOP_LOG})
+        logger.debug("Join start")
+        self.db_thread.join()
+        logger.debug("Join end")
 
     def db_mngr_thread_method(self, data_queue):
         """

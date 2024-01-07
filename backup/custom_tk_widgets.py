@@ -20,7 +20,7 @@ stream_handler.setFormatter(log_formatter)
 stream_handler.setLevel(logging.DEBUG)
 logger.addHandler(stream_handler)
 # File logger
-file_handler = logging.FileHandler(os.path.join("logs", "tk_custom_widgets.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "tk_custom_widgets.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)

@@ -13,7 +13,6 @@ logger.setLevel(logging.DEBUG)
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
-
 # File logger
 file_handler = logging.FileHandler(os.path.join("logs", "auto_schedule_creator.log"))
 file_handler.setFormatter(log_formatter)
@@ -33,6 +32,7 @@ def test():
                             19: 0.2, 20: 200.09, 21: 93.49, 22: 7.18, 23: 1.34}
     test = AutoScheduleCreator(auto_create_period=8,
                                get_prices_method=lambda: (fake_prices_today, fake_prices_tomorrow))
+    test.set_scheduled_times()
 
 
 class AutoScheduleCreator:
@@ -53,18 +53,29 @@ class AutoScheduleCreator:
                  max_hours_to_run: int = 5,
                  min_hours_to_run: int = 2):
         self._get_prices_method = get_prices_method
-        self._auto_create_enabled = True
+        self._auto_create_enabled = False
         self._auto_create_period = auto_create_period
         self._hourly_schedule = hourly_schedule
         # settings for schedule
         self._max_total_cost = max_total_cost
         self._max_hours_to_run = max_hours_to_run
         self._min_hours_to_run = min_hours_to_run
+        self.set_auto_create_enabled(True)
+        self.debug_first_print = True
 
     def loop(self):
+        if self.debug_first_print:
+            logger.debug("First loop")
         # Call periodically to execute auto schedule creation
         if self._auto_create_enabled:
+            if self.debug_first_print:
+                logger.debug("Auto create enabled")
             schedule.run_pending()
+        else:
+            if self.debug_first_print:
+                logger.debug("Auto create disabled")
+        if self.debug_first_print:
+            self.debug_first_print = True
 
     def set_parameters(self,
                        auto_create_period: int = 8,
@@ -97,15 +108,18 @@ class AutoScheduleCreator:
         self.set_scheduled_times()
 
     def set_scheduled_times(self):
+        logger.info("Setting schedule times")
         # Always start before midnight
         start_hour = 23
         # Set other execution times depending on schedule period
         while start_hour > 0:
+            logger.info(f"Adding time {start_hour:02}:{self.MINUTE_START_AT:02}")
             schedule.every().day.at(f"{start_hour:02}:{self.MINUTE_START_AT:02}").do(self.execute_schedule_generation)
             start_hour -= self._auto_create_period
 
     def execute_schedule_generation(self):
         # get prices using the available method
+        logger.info("Executing schedule creation")
         prices_today, prices_tomorrow = self._get_prices_method()
         schedule_today, schedule_tomorrow = ScheduleCreator.get_schedule_from_prices(
             prices_today=prices_today,
