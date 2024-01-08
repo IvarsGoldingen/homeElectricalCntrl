@@ -16,6 +16,7 @@ from threading import Timer
 import subprocess
 from tkinter import Tk, Label, Button, Frame
 import logging
+from vallux_ahu import ValloxAhu
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.device import Device
 from devices.deviceTypes import DeviceType
@@ -28,6 +29,7 @@ from schedules.auto_schedule_creator import AutoScheduleCreator
 from schedules.daily_timed_schedule import DailyTimedSchedule
 from custom_tk_widgets.auto_hourly_schedule_creator_widget import AutoHourlyScheduleCreatorWidget
 from custom_tk_widgets.daily_timed_schedule_widget import DailyTimedScheduleCreatorWidget
+from custom_tk_widgets.ahu_widget import AhuWidget
 from observer_pattern import Observer
 from data_logger import DataLogger
 import secrets
@@ -137,6 +139,7 @@ class MainUIClass(Tk, Observer):
         # Execute this same function in regular intervals
         for dev in self.dev_list:
             dev.loop()
+        self.ahu.loop()
         self.device_thread = Timer(self.LOOP_DEVICES_INTERVAL_S, self.device_threaded_loop)
         self.device_thread.start()
 
@@ -186,6 +189,7 @@ class MainUIClass(Tk, Observer):
                 # if device is an MQTT device, register the topic that should be subscribed to and a callback
                 # for receiving messages from that topic
                 self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)
+        self.ahu = ValloxAhu(ip="http://192.168.94.117/")
 
 
 
@@ -226,6 +230,9 @@ class MainUIClass(Tk, Observer):
                 dev.register(shelly_widget, Device.event_name_status_changed)
                 dev.register(shelly_widget, ShellyPlug.event_name_new_extra_data)
                 self.dev_widgets.append(shelly_widget)
+        # Ahu widget
+        self.ahu_widget = AhuWidget(parent=self.frame_devices, ahu=self.ahu)
+        self.ahu.register(self.ahu_widget, ValloxAhu.event_name_new_data)
         # Create schedule widgets and register them as listeners for desired schedules
         self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
@@ -253,8 +260,11 @@ class MainUIClass(Tk, Observer):
         self.lbl_status.grid(row=0, column=0)
         self.frame_extra_btns.grid(row=1, column=0)
         self.frame_devices.grid(row=2, column=0)
+        last_socket_widget = 0
         for i, widget in enumerate(self.dev_widgets):
             widget.grid(row=0, column=i)
+            last_socket_widget += 1
+        self.ahu_widget.grid(row=0, column=last_socket_widget)
         self.schedule_widget.grid(row=3, column=0)
         self.frame_widgets_bottom.grid(row=4, column=0)
         self.auto_schedule_creator_widget.grid(row=0, column=0)
@@ -279,6 +289,8 @@ class MainUIClass(Tk, Observer):
         self.db_logger.stop()
         # Stpo MQTT client
         self.mqtt_client.stop()
+        # Stop AHU data read
+        self.ahu.stop()
         # Close tkinter UI
         if hasattr(self, 'winfo_exists') and self.winfo_exists():
             self.destroy()

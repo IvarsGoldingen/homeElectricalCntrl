@@ -75,7 +75,7 @@ class AutoScheduleCreator:
             if self.debug_first_print:
                 logger.debug("Auto create disabled")
         if self.debug_first_print:
-            self.debug_first_print = True
+            self.debug_first_print = False
 
     def set_parameters(self,
                        auto_create_period: int = 8,

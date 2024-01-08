@@ -117,13 +117,14 @@ class DataLogger(Observer):
         self.data_queue.put({"log_type": self.LogType.PRICE_LOG, "data": (prices_tomorrow, tomorrows_date)})
 
     def stop(self):
+        logger.info("Stopping data logger")
         # Stop periodicall logging
         self.periodical_log_thread.cancel()
         # Stop database thread
         self.data_queue.put({"log_type": self.LogType.STOP_LOG})
-        logger.debug("Join start")
+        logger.info("Join start")
         self.db_thread.join()
-        logger.debug("Join end")
+        logger.info("Join end")
 
     def db_mngr_thread_method(self, data_queue):
         """

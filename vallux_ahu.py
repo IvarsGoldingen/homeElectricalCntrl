@@ -12,6 +12,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
+from observer_pattern import Subject
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -49,27 +50,38 @@ def test():
     finally:
         ahu.stop()
 
-class ValloxAhu:
+
+class ValloxAhu(Subject):
     """
     Class that webscrapes data from web interface of a Vallox recuperation unit
     Only sensor readings, not control
     """
     NO_DATA_VALUE = -99.99
+    # Max new data request frequency
+    _MAX_NEW_DATA_REQ_S = 300.0
+    # For the observer pattern
+    event_name_new_data = "ahu_new_data"
 
-    def __init__(self, ip: str):
+    def __init__(self, ip: str, auto_req_data_period_s: float = _MAX_NEW_DATA_REQ_S):
         # data available from the ahu device web interface
+        super().__init__()
+        self.ip = ip
+        self.fan_speed = self.AhuWebScrapeThread.NO_DATA_VALUE
         self.rh = self.AhuWebScrapeThread.NO_DATA_VALUE
         self.co2 = self.AhuWebScrapeThread.NO_DATA_VALUE
-        self.fan_speed = self.AhuWebScrapeThread.NO_DATA_VALUE
         self.t_indoor_air = self.AhuWebScrapeThread.NO_DATA_VALUE
         self.t_outdoor_air = self.AhuWebScrapeThread.NO_DATA_VALUE
         self.t_supply_air = self.AhuWebScrapeThread.NO_DATA_VALUE
         self.t_exhaust_air = self.AhuWebScrapeThread.NO_DATA_VALUE
         self.queue_to_webscrapping_thread = Queue()
         self.queue_from_webscrapping_thread = Queue()
+        # Time since last data req
+        self.last_data_req_time = 0.0
+        self.auto_req_data_period_s = auto_req_data_period_s if auto_req_data_period_s <= self._MAX_NEW_DATA_REQ_S \
+            else self._MAX_NEW_DATA_REQ_S
         self.ahu_web_thread = self.AhuWebScrapeThread(queue_to_webscrapping_thread=self.queue_to_webscrapping_thread,
-                                              queue_from_webscrapping_thread=self.queue_from_webscrapping_thread,
-                                              ip=ip)
+                                                      queue_from_webscrapping_thread=self.queue_from_webscrapping_thread,
+                                                      ip=ip)
         self.ahu_web_thread.start()
 
     def debug_printout(self):
@@ -86,8 +98,15 @@ class ValloxAhu:
         Has to be called periodically
         """
         self.handle_msgs_from_mqtt_client()
+        self.auto_req_data()
+
+    def auto_req_data(self):
+        time_passed = time.perf_counter() - self.last_data_req_time
+        if time_passed > self.auto_req_data_period_s:
+            self.req_new_data()
 
     def req_new_data(self):
+        self.last_data_req_time = time.perf_counter()
         self.queue_to_webscrapping_thread.put(self.AhuWebScrapeThread.MsgType.NEW_DATA_REQ)
 
     def stop(self):
@@ -97,15 +116,13 @@ class ValloxAhu:
         self.ahu_web_thread.join()
         logger.debug("After join")
 
-
     def handle_msgs_from_mqtt_client(self):
         while not self.queue_from_webscrapping_thread.empty():
             logger.debug("New values received")
             sensor_values_dic = self.queue_from_webscrapping_thread.get()
             for sensor in sensor_values_dic:
                 setattr(self, sensor, sensor_values_dic[sensor])
-
-
+            self.notify_observers(self.event_name_new_data)
 
     class AhuWebScrapeThread(threading.Thread):
 
@@ -120,7 +137,7 @@ class ValloxAhu:
         ELEM_XPATH_T_EXHAUST = "//div[@l10n-path='dashboard.now.exhaust']"
 
         class MsgType(Enum):
-            # Message types that can BE RECEIVED By the class
+            # Message types that can BE RECEIVED By the
             STOP = auto()
             NEW_DATA_REQ = auto()
 
@@ -245,9 +262,17 @@ class ValloxAhu:
             logger.info("Closing driver")
             try:
                 self.driver.close()
+                # TODO: always getting error:
+                """
+                HTTPConnectionPool(host='localhost', port=57268): Max retries exceeded with url: 
+                /session/c84807f0-afd5-48c7-ab93-0c859cc583a9/window 
+                (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x0000014C61EBB390>: 
+                Failed to establish a new connection: [WinError 10061] No connection could be made because the target
+                machine actively refused it'))
+                """
             except Exception as e:
-                logger.debug("Closed with exception")
-                logger.debug(e)
+                logger.error("Closed with exception")
+                logger.error(e)
             logger.info("Closed")
 
 

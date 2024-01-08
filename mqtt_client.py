@@ -261,6 +261,7 @@ class MyMqttClient(Subject):
         def stop(self):
             logger.info(f"Stopping MQTT broker")
             self.mqtt_client.loop_stop()
+            logger.info(f"Stopped MQTT broker")
 
         def subscribe_to_device_topics(self):
             # Subscribe to all topics in the subscription list
