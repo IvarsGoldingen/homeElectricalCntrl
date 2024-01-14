@@ -1,3 +1,4 @@
+from dataclasses import dataclass,  fields
 import logging
 import os
 from typing import Optional
@@ -13,11 +14,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 from observer_pattern import Subject
+from sensor import Sensor
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
@@ -25,7 +27,7 @@ logger.addHandler(stream_handler)
 # File logger
 file_handler = logging.FileHandler(os.path.join("logs", "ahu.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 
@@ -51,28 +53,54 @@ def test():
         ahu.stop()
 
 
+@dataclass()
+class ValloxSensorData:
+    fan_speed: Sensor
+    rh: Sensor
+    co2: Sensor
+    t_indoor_air: Sensor
+    t_outdoor_air: Sensor
+    t_supply_air: Sensor
+    t_exhaust_air: Sensor
+
+
 class ValloxAhu(Subject):
     """
     Class that webscrapes data from web interface of a Vallox recuperation unit
     Only sensor readings, no control
     """
-    NO_DATA_VALUE = -99.99
     # Max new data request frequency
     _MAX_NEW_DATA_REQ_S = 300.0
+    NO_DATA_VALUE = -99.99
+    FAN_SPEED_NAME = "fan_speed"
+    RH_NAME = "rh"
+    CO2_NAME = "co2"
+    T_INDOOR_NAME = "t_indoor_air"
+    T_OUTDOOR_NAME = "t_outdoor_air"
+    T_SUPPLY_NAME = "t_supply_air"
+    T_EXHAUST_NAME = "t_exhaust_air"
     # For the observer pattern
     event_name_new_data = "ahu_new_data"
 
-    def __init__(self, ip: str, auto_req_data_period_s: float = _MAX_NEW_DATA_REQ_S):
+    def __init__(self, ip: str, auto_req_data_period_s: float = _MAX_NEW_DATA_REQ_S, name: str = "ahu"):
         # data available from the ahu device web interface
         super().__init__()
         self.ip = ip
-        self.fan_speed = self.AhuWebScrapeThread.NO_DATA_VALUE
-        self.rh = self.AhuWebScrapeThread.NO_DATA_VALUE
-        self.co2 = self.AhuWebScrapeThread.NO_DATA_VALUE
-        self.t_indoor_air = self.AhuWebScrapeThread.NO_DATA_VALUE
-        self.t_outdoor_air = self.AhuWebScrapeThread.NO_DATA_VALUE
-        self.t_supply_air = self.AhuWebScrapeThread.NO_DATA_VALUE
-        self.t_exhaust_air = self.AhuWebScrapeThread.NO_DATA_VALUE
+        self.name = name
+        self.fan_speed = Sensor(name=self.FAN_SPEED_NAME, value=Sensor.NO_DATA_VALUE, group_name=name)
+        self.rh = Sensor(name=self.RH_NAME, value=Sensor.NO_DATA_VALUE, group_name=name)
+        self.co2 = Sensor(name=self.CO2_NAME, value=Sensor.NO_DATA_VALUE, group_name=name)
+        self.t_indoor_air = Sensor(name=self.T_INDOOR_NAME, value=Sensor.NO_DATA_VALUE, group_name=name)
+        self.t_outdoor_air = Sensor(name=self.T_OUTDOOR_NAME, value=Sensor.NO_DATA_VALUE, group_name=name)
+        self.t_supply_air = Sensor(name=self.T_SUPPLY_NAME, value=Sensor.NO_DATA_VALUE, group_name=name)
+        self.t_exhaust_air = Sensor(name=self.T_EXHAUST_NAME, value=Sensor.NO_DATA_VALUE, group_name=name)
+        self.sensor_data = ValloxSensorData(fan_speed=self.fan_speed,
+                                            rh=self.rh,
+                                            co2=self.co2,
+                                            t_indoor_air=self.t_indoor_air,
+                                            t_outdoor_air=self.t_outdoor_air,
+                                            t_supply_air=self.t_supply_air,
+                                            t_exhaust_air=self.t_exhaust_air)
         self.queue_to_webscrapping_thread = Queue()
         self.queue_from_webscrapping_thread = Queue()
         # Time since last data req
@@ -81,17 +109,26 @@ class ValloxAhu(Subject):
             else self._MAX_NEW_DATA_REQ_S
         self.ahu_web_thread = self.AhuWebScrapeThread(queue_to_webscrapping_thread=self.queue_to_webscrapping_thread,
                                                       queue_from_webscrapping_thread=self.queue_from_webscrapping_thread,
-                                                      ip=ip)
+                                                      ip=ip,
+                                                      sensors=self.sensor_data)
         self.ahu_web_thread.start()
 
+    def get_sensor_list(self):
+        ahu_sensors = []
+        for sensor in fields(self.sensor_data):
+            sensor_name = sensor.name
+            sensor_obj = getattr(self.sensor_data, sensor_name)
+            ahu_sensors.append(sensor_obj)
+        return ahu_sensors
+
     def debug_printout(self):
-        logger.debug(f"RH: {self.rh}")
-        logger.debug(f"co2: {self.co2}")
-        logger.debug(f"fan_speed: {self.fan_speed}")
-        logger.debug(f"t_indoor_air: {self.t_indoor_air}")
-        logger.debug(f"t_outdoor_air: {self.t_outdoor_air}")
-        logger.debug(f"t_supply_air: {self.t_supply_air}")
-        logger.debug(f"t_exhaust_air: {self.t_exhaust_air}")
+        logger.debug(f"RH: {self.rh.value}")
+        logger.debug(f"co2: {self.co2.value}")
+        logger.debug(f"fan_speed: {self.fan_speed.value}")
+        logger.debug(f"t_indoor_air: {self.t_indoor_air.value}")
+        logger.debug(f"t_outdoor_air: {self.t_outdoor_air.value}")
+        logger.debug(f"t_supply_air: {self.t_supply_air.value}")
+        logger.debug(f"t_exhaust_air: {self.t_exhaust_air.value}")
 
     def loop(self):
         """
@@ -121,7 +158,10 @@ class ValloxAhu(Subject):
             logger.debug("New values received")
             sensor_values_dic = self.queue_from_webscrapping_thread.get()
             for sensor in sensor_values_dic:
-                setattr(self, sensor, sensor_values_dic[sensor])
+                # Received dict keys are equal to sensor object names of this class
+                # Use getattr to get needed sensor object of this class
+                # the use set attr to set the new value
+                setattr(getattr(self, sensor), 'value', sensor_values_dic[sensor])
             self.notify_observers(self.event_name_new_data)
 
     class AhuWebScrapeThread(threading.Thread):
@@ -143,17 +183,18 @@ class ValloxAhu(Subject):
 
         def __init__(self, queue_to_webscrapping_thread: Queue,
                      queue_from_webscrapping_thread: Queue,
-                     ip: str):
+                     ip: str,
+                     sensors: ValloxSensorData):
             super().__init__()
             #  Key names must equal to variable names
-            self.data_element_dict = {
-                "rh": self.ELEM_XPATH_RH,
-                "co2": self.ELEM_XPATH_CO2,
-                "fan_speed": self.ELEM_XPATH_FAN_SPEED,
-                "t_indoor_air": self.ELEM_XPATH_T_IN,
-                "t_outdoor_air": self.ELEM_XPATH_T_OUT,
-                "t_supply_air": self.ELEM_XPATH_T_SUPPLY,
-                "t_exhaust_air": self.ELEM_XPATH_T_EXHAUST,
+            self.sensor_xpath_dict = {
+                sensors.rh.name: self.ELEM_XPATH_RH,
+                sensors.co2.name: self.ELEM_XPATH_CO2,
+                sensors.fan_speed.name: self.ELEM_XPATH_FAN_SPEED,
+                sensors.t_indoor_air.name: self.ELEM_XPATH_T_IN,
+                sensors.t_outdoor_air.name: self.ELEM_XPATH_T_OUT,
+                sensors.t_supply_air.name: self.ELEM_XPATH_T_SUPPLY,
+                sensors.t_exhaust_air.name: self.ELEM_XPATH_T_EXHAUST,
             }
             self.queue_to_webscrapping_thread = queue_to_webscrapping_thread
             self.queue_from_webscrapping_thread = queue_from_webscrapping_thread
@@ -220,7 +261,7 @@ class ValloxAhu(Subject):
             time.sleep(1.0)
             try:
                 # Increased poll frequency because ahu sometimes hangs up
-                WebDriverWait(self.driver, timeout=6, poll_frequency=2).until(EC.presence_of_element_located(
+                WebDriverWait(self.driver, timeout=15, poll_frequency=5).until(EC.presence_of_element_located(
                     (By.XPATH, "//div[@class='dashboard-controls']")))
                 logger.debug("Dashboard controls found")
             except TimeoutException:
@@ -235,15 +276,15 @@ class ValloxAhu(Subject):
             """
             logger.debug(f"Getting values")
             value_dict = {}
-            for data in self.data_element_dict:
+            for sensor_name in self.sensor_xpath_dict:
                 try:
-                    element = self.driver.find_element(By.XPATH, self.data_element_dict[data])
+                    element = self.driver.find_element(By.XPATH, self.sensor_xpath_dict[sensor_name])
                     value_str = element.text
                     value_numeric = self.extract_numeric_part(value_str)
-                    value_dict[data] = value_numeric
+                    value_dict[sensor_name] = value_numeric
                 except NoSuchElementException:
-                    logger.error(f"No such element: {data}")
-                    value_dict[data] = self.NO_DATA_VALUE
+                    logger.error(f"No such element: {sensor_name}")
+                    value_dict[sensor_name] = self.NO_DATA_VALUE
             return value_dict
 
         def extract_numeric_part(self, str_value: str):

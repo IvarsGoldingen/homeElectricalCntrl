@@ -17,7 +17,7 @@ class AhuWidget(tk.Frame, Observer):
     def __init__(self, parent, ahu: ValloxAhu):
         """
         :param parent: parent view
-        :param device: Device the widget is connected to
+        :param ahu: AHU the widget is connected to
         """
         super().__init__(parent, borderwidth=2, relief="solid")
         self.ahu = ahu
@@ -65,10 +65,10 @@ class AhuWidget(tk.Frame, Observer):
         self.update_widget()
 
     def update_widget(self):
-        self.lbl_fan_speed.config(text=f"FAN SPEED {self.ahu.fan_speed} %")
-        self.lbl_rh.config(text=f"RH {self.ahu.rh} %")
-        self.lbl_co2.config(text=f"CO2 {self.ahu.co2} PPM")
-        self.lbl_t_indoor_air.config(text=f"T° IN {self.ahu.t_indoor_air} °C")
-        self.lbl_t_outdoor_air.config(text=f"T° OUT {self.ahu.t_outdoor_air} °C")
-        self.lbl_t_supply_air.config(text=f"T° SUP. {self.ahu.t_supply_air} °C")
-        self.lbl_t_exhaust_air.config(text=f"T° EXH. {self.ahu.t_exhaust_air} °C")
+        self.lbl_fan_speed.config(text=f"FAN SPEED {self.ahu.fan_speed.value} %")
+        self.lbl_rh.config(text=f"RH {self.ahu.rh.value} %")
+        self.lbl_co2.config(text=f"CO2 {self.ahu.co2.value} PPM")
+        self.lbl_t_indoor_air.config(text=f"T° IN {self.ahu.t_indoor_air.value} °C")
+        self.lbl_t_outdoor_air.config(text=f"T° OUT {self.ahu.t_outdoor_air.value} °C")
+        self.lbl_t_supply_air.config(text=f"T° SUP. {self.ahu.t_supply_air.value} °C")
+        self.lbl_t_exhaust_air.config(text=f"T° EXH. {self.ahu.t_exhaust_air.value} °C")

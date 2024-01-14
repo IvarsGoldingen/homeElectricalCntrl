@@ -14,6 +14,7 @@ TODO: MQTT security
 import os
 from threading import Timer
 import subprocess
+from dataclasses import fields
 from tkinter import Tk, Label, Button, Frame
 import logging
 from vallux_ahu import ValloxAhu
@@ -104,8 +105,12 @@ class MainUIClass(Tk, Observer):
             logger.info("KeyboardInterrupt")
 
     def setup_db_logger(self):
+        ahu_sensors = self.ahu.get_sensor_list()
+        all_sensors = []
+        all_sensors.extend(ahu_sensors)
         self.db_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
-                                    device_list=self.dev_list)
+                                    device_list=self.dev_list, sensor_list=all_sensors,
+                                    periodical_log_interval_s=3600)
         self.price_mngr.register(self.db_logger, PriceFileManager.event_name_prices_changed)
         for dev in self.dev_list:
             dev.register(self.db_logger, Device.event_name_status_changed)

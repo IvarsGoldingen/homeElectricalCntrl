@@ -2,7 +2,7 @@ import sqlite3
 import os
 from datetime import datetime, timedelta, timezone
 from devices.deviceTypes import DeviceType
-
+from sensor import Sensor
 
 def main_fc():
     db_mngr = DbMngr()
@@ -153,22 +153,29 @@ class DbMngr:
                             (name, formatted_time, date_str, off_on, power, status, energy))
         self.conn.commit()
 
-    def insert_sensor_data(self, name: str, value: float):
-        """
-        :param name: Shelly plug name
-        :param value:
-        :return:
-        """
+    def insert_sensor_list_data(self, sensor_list: list[Sensor]):
         current_time = datetime.now(timezone.utc)
         formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
         date_str = str(current_time.date())
+        for s in sensor_list:
+            # Add group name to values in database if there is one
+            name_to_use = s.name if not s.group_name else f"{s.group_name}_{s.name}"
+            self._do_sensor_cursor_statement(name_to_use, s.value, formatted_time, date_str)
+        self.conn.commit()
+
+    def _do_sensor_cursor_statement(self, name: str, value: float, formatted_time: str, date_str: str):
+        """
+        :param name: Sensor name
+        :param value:
+        :return:
+        """
         # when inserting, get the device ID using the device name
         self.cursor.execute('INSERT INTO sensor_data '
                             '(device_id, record_time, date, value) '
                             'VALUES ((SELECT device_id FROM sensors WHERE name = ?), '
                             '?, ?, ?)',
                             (name, formatted_time, date_str, value))
-        self.conn.commit()
+
 
     def insert_prices(self, prices: dict, date: datetime.date):
         """
@@ -212,7 +219,7 @@ class DbMngr:
                           (dev_type, name, plug_id, active))
         self.conn.commit()
 
-    def insert_sensor(self,  name: str, sensor_type: int = 0, active: bool = True):
+    def insert_sensor(self, name: str, sensor_type: int = 0, active: bool = True):
         """
         @param name: name of sensor
         @param sensor_type: not yet implemented
