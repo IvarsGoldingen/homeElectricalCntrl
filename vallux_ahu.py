@@ -54,7 +54,7 @@ def test():
 class ValloxAhu(Subject):
     """
     Class that webscrapes data from web interface of a Vallox recuperation unit
-    Only sensor readings, not control
+    Only sensor readings, no control
     """
     NO_DATA_VALUE = -99.99
     # Max new data request frequency

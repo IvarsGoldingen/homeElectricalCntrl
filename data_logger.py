@@ -12,6 +12,7 @@ from price_file_manager import PriceFileManager
 from devices.device import Device
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.deviceTypes import DeviceType
+from vallux_ahu import ValloxAhu
 from database_mngr import DbMngr
 
 # Setup logging
@@ -43,33 +44,47 @@ class DataLogger(Observer):
     class LogType(Enum):
         PRICE_LOG = auto()
         SHELLY_LOG = auto()
+        SENSOR_LOG = auto()
         STOP_LOG = auto()
 
     def __init__(self, get_prices_method: Callable[[], Tuple[Dict, Dict]], device_list: list[Device],
-                 device_log_interval_s: float = 3600.0):
+                 ahu: ValloxAhu, periodical_log_interval_s: float = 3600.0):
         """
         :param get_prices_method: Method to call for this class to get the prices of electricitt
         :param device_list: list of devices hwose data is to be logged
-        :param device_log_interval_s: how often to periodically log device data
+        :param ahu: ahu device to be logged
+        :param periodical_log_interval_s: how often to periodically log device data
         """
-        self.device_log_interval_s = device_log_interval_s
+        self.periodical_log_interval_s = periodical_log_interval_s
         self.get_prices_method = get_prices_method
         self.device_list = device_list
+        self.ahu = ahu
         self.data_queue = queue.Queue()
-        self.periodical_log_thread = Timer(self.device_log_interval_s, self.periodical_device_log)
+        self.periodical_log_thread = Timer(self.periodical_log_interval_s, self.periodical_log)
         self.periodical_log_thread.start()
         self.db_thread = threading.Thread(target=self.db_mngr_thread_method, args=(self.data_queue,))
         self.db_thread.start()
 
+    def periodical_log(self):
+        self.periodical_device_log()
+        self.periodical_sensor_log()
+        self.periodical_log_thread = Timer(self.periodical_log_interval_s, self.periodical_log)
+        self.periodical_log_thread.start()
+
+    def periodical_sensor_log(self):
+        self.periodical_ahu_log()
+
+    def periodical_ahu_log(self):
+        pass
+
     def periodical_device_log(self):
+        # log device data
         logger.debug("periodical_device_log")
         # Execute this function in regular intervals
         for dev in self.device_list:
             if dev.get_cmd_given():
                 logger.debug(f"Device {dev.name} is on, executing periodical log")
                 self.log_device_data(dev)
-        self.periodical_log_thread = Timer(self.device_log_interval_s, self.periodical_device_log)
-        self.periodical_log_thread.start()
 
     def handle_subject_event(self, event_type: str, *args, **kwargs):
         # Handle events initiated by devices this class is listening to

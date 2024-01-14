@@ -6,6 +6,10 @@ from devices.deviceTypes import DeviceType
 
 def main_fc():
     db_mngr = DbMngr()
+    db_mngr.create_table_of_sensors()
+    db_mngr.create_table_of_sensor_data()
+    db_mngr.insert_sensor(name="ahu_t_in")
+    db_mngr.insert_sensor_data(name="ahu_t_in", value=12.49)
     # db_mngr.create_all_tables()
     # insert_new_device_in_dev_table(db_mngr)
     # insert_fake_devices(db_mngr)
@@ -56,7 +60,9 @@ class DbMngr:
     Project has 3 tables:
     devices - list of devices used in the project
     prices - electricity prices
-    shelly_data - data containing shelly smartplug data
+    shelly_data - data containing shelly smartplug data - linked to the devices table
+    sensors - list of sensors used in the project
+    sensor_data - read sensor values - linked to sensors table
     TODO: Auto delete data older than
     """
 
@@ -114,8 +120,6 @@ class DbMngr:
                                 (new_date_str, new_hour, id))
         self.conn.commit()
 
-
-
     def insert_new_column(self, table_name, row_name):
         # record_time_new
         self.cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {row_name} TEXT")
@@ -126,6 +130,8 @@ class DbMngr:
         self.create_table_of_devices()
         self.create_table_for_prices()
         self.create_table_for_shelly_data()
+        self.create_table_of_sensors()
+        self.create_table_of_sensor_data()
 
     def insert_shelly_data(self, name: str, off_on: bool, power: float, status: int, energy: float):
         """
@@ -147,6 +153,23 @@ class DbMngr:
                             (name, formatted_time, date_str, off_on, power, status, energy))
         self.conn.commit()
 
+    def insert_sensor_data(self, name: str, value: float):
+        """
+        :param name: Shelly plug name
+        :param value:
+        :return:
+        """
+        current_time = datetime.now(timezone.utc)
+        formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
+        date_str = str(current_time.date())
+        # when inserting, get the device ID using the device name
+        self.cursor.execute('INSERT INTO sensor_data '
+                            '(device_id, record_time, date, value) '
+                            'VALUES ((SELECT device_id FROM sensors WHERE name = ?), '
+                            '?, ?, ?)',
+                            (name, formatted_time, date_str, value))
+        self.conn.commit()
+
     def insert_prices(self, prices: dict, date: datetime.date):
         """
         :param prices: price dictionary
@@ -163,7 +186,8 @@ class DbMngr:
                 date_str_to_use = date_str_yesterday
             else:
                 date_str_to_use = date_str_today
-            self.cursor.execute('INSERT INTO prices (date, hour, price) VALUES (?, ?, ?)', (date_str_to_use, hour_utc, value))
+            self.cursor.execute('INSERT INTO prices (date, hour, price) VALUES (?, ?, ?)',
+                                (date_str_to_use, hour_utc, value))
         self.conn.commit()
 
     @staticmethod
@@ -174,7 +198,7 @@ class DbMngr:
         utc_time = datetime.utcnow()
         # Calculate the time difference between local timezone and UTC
         time_difference = local_time - utc_time
-        return round(time_difference.total_seconds()/3600)
+        return round(time_difference.total_seconds() / 3600)
 
     def insert_device(self, dev_type: DeviceType, name: str, plug_id: str = "", active: bool = True):
         """
@@ -186,6 +210,63 @@ class DbMngr:
         """
         self.conn.execute("INSERT INTO devices (type, name, plug_id, active) VALUES (?, ?, ? ,?)",
                           (dev_type, name, plug_id, active))
+        self.conn.commit()
+
+    def insert_sensor(self,  name: str, sensor_type: int = 0, active: bool = True):
+        """
+        @param name: name of sensor
+        @param sensor_type: not yet implemented
+        @param active: Active or not
+        """
+        self.conn.execute("INSERT INTO sensors (type, name, active) VALUES (?, ? ,?)",
+                          (sensor_type, name, active))
+        self.conn.commit()
+
+    def create_table_for_prices(self):
+        """
+        Create a table for prices
+        Not possible to add duplicate values of a date and hour
+        """
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS prices (
+                              id INTEGER PRIMARY KEY,
+                              date DATE,
+                              hour INTEGER,
+                              price FLOAT,
+                              UNIQUE(date, hour) ON CONFLICT IGNORE
+                           )''')
+        # Date and hour will be used to get data from the table so create index
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS prices_index ON prices(date, hour)")
+        self.conn.commit()
+
+    def create_table_of_sensors(self):
+        """
+        Create a table for sensors present in home automation
+        :return:
+        """
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS sensors (
+                              device_id INTEGER PRIMARY KEY,
+                              type INTEGER,
+                              name TEXT,
+                              active BOOLEAN
+                           )''')
+        self.conn.commit()
+
+    def create_table_of_sensor_data(self):
+        """
+        Create a table for sensor data
+        Device id connected to the sensor table
+        :return:
+        """
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS sensor_data (
+                              id INTEGER PRIMARY KEY,
+                              device_id INTEGER,
+                              record_time DATETIME,
+                              date DATE,
+                              value FLOAT,
+                              FOREIGN KEY(device_id) REFERENCES sensors(device_id)
+                           )''')
+        # Device id and date will be used to get data from the table so create index
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS sensor_data_index ON sensor_data(device_id, date)")
         self.conn.commit()
 
     def create_table_of_devices(self):
@@ -200,22 +281,6 @@ class DbMngr:
                               plug_id TEXT,
                               active BOOLEAN
                            )''')
-        self.conn.commit()
-
-    def create_table_for_prices(self):
-        """
-        Create a table for prices
-        Not possible to add dublicate values of a date and hour
-        """
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS prices (
-                              id INTEGER PRIMARY KEY,
-                              date DATE,
-                              hour INTEGER,
-                              price FLOAT,
-                              UNIQUE(date, hour) ON CONFLICT IGNORE
-                           )''')
-        # Date and hour will be used to get data from the table so create index
-        self.cursor.execute("CREATE INDEX IF NOT EXISTS prices_index ON prices(date, hour)")
         self.conn.commit()
 
     def create_table_for_shelly_data(self):
