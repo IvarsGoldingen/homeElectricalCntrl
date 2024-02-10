@@ -145,6 +145,7 @@ class ShellyPlug(MqttDevice):
                 # All other are int, real values that have to be cast from str
                 try:
                     new_value = data_type(clean_data)
+                    new_value = self.scale_data(target_variable,new_value)
                     logger.debug(f"New Value is {new_value}")
                     setattr(self, target_variable, new_value)
                     self.check_for_overtemperature()
@@ -156,6 +157,21 @@ class ShellyPlug(MqttDevice):
             # Handle unrecognized topics if needed
             logger.debug("Unhandled MQTT msg:")
             logger.debug(f"{topic}\t{data}")
+
+    def scale_data(self,target_variable: str, new_value):
+        """
+        @param target_variable: target variable name
+        @param new_value: value
+        @return: scaled value
+        """
+        if target_variable == self.topic_mapping[self.energy_topic][0]:
+            # energy received in Wmin, convert to kWh
+            if new_value != 0:
+                # 60 for min to h, 1000 W to kW
+                return new_value/60.0/1000
+        # return unchanged if  not one of the variables that should be scaled
+        return new_value
+
 
     def check_for_overtemperature(self):
         "If msg of overtemperature received, block device"

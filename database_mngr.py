@@ -6,15 +6,7 @@ from sensor import Sensor
 
 def main_fc():
     db_mngr = DbMngr()
-    db_mngr.create_table_of_sensors()
-    db_mngr.create_table_of_sensor_data()
-    db_mngr.insert_sensor(name="ahu_fan_speed")
-    db_mngr.insert_sensor(name="ahu_rh")
-    db_mngr.insert_sensor(name="ahu_co2")
-    db_mngr.insert_sensor(name="ahu_t_indoor_air")
-    db_mngr.insert_sensor(name="ahu_t_outdoor_air")
-    db_mngr.insert_sensor(name="ahu_t_supply_air")
-    db_mngr.insert_sensor(name="ahu_t_exhaust_air")
+    db_mngr.fix_wmin_to_kwh_in_shelly_table()
     # db_mngr.create_all_tables()
     # insert_new_device_in_dev_table(db_mngr)
     # insert_fake_devices(db_mngr)
@@ -25,6 +17,16 @@ def main_fc():
     # db_mngr.fix_date_time_price_table()
     db_mngr.stop()
 
+def insert_sensors(db_mngr):
+    db_mngr.create_table_of_sensors()
+    db_mngr.create_table_of_sensor_data()
+    db_mngr.insert_sensor(name="ahu_fan_speed")
+    db_mngr.insert_sensor(name="ahu_rh")
+    db_mngr.insert_sensor(name="ahu_co2")
+    db_mngr.insert_sensor(name="ahu_t_indoor_air")
+    db_mngr.insert_sensor(name="ahu_t_outdoor_air")
+    db_mngr.insert_sensor(name="ahu_t_supply_air")
+    db_mngr.insert_sensor(name="ahu_t_exhaust_air")
 
 def insert_new_device_in_dev_table(db_mngr):
     # device name must be equal to the name in the program for logging to work properly
@@ -105,6 +107,9 @@ class DbMngr:
         for row in rows:
             print(row)
 
+
+
+
     def fix_date_time_price_table(self):
         """
         Time in table was saved in GMT+2. Change so it is GMT.
@@ -137,6 +142,21 @@ class DbMngr:
         self.create_table_for_shelly_data()
         self.create_table_of_sensors()
         self.create_table_of_sensor_data()
+
+    def fix_wmin_to_kwh_in_shelly_table(self):
+        """
+        Change energy reading from wmin to kWh
+        @return:
+        """
+        self.cursor.execute(f"SELECT id, energy FROM shelly_data ORDER BY id")
+        rows = self.cursor.fetchall()
+        for row in rows:
+            id, energy_wh = row
+            if energy_wh != -99.99 and energy_wh != 0.0:
+                energy_kwh = energy_wh/60/1000
+                self.cursor.execute('UPDATE shelly_data SET energy = ? WHERE id = ?',
+                                    (energy_kwh, id))
+        self.conn.commit()
 
     def insert_shelly_data(self, name: str, off_on: bool, power: float, status: int, energy: float):
         """

@@ -19,7 +19,7 @@ class ShellyPlugWidget(DeviceWidget):
     def update_extra_data(self):
         self.lbl_temp.config(text=f"{self.device.temperature} °C")
         self.lbl_pwr.config(text=f"{self.device.power} W")
-        self.lbl_energy.config(text=f"{self.device.energy} Wh")
+        self.lbl_energy.config(text=f"{self.device.energy:.3f} kWh")
         new_text = "OFFLINE"
         if self.device.state_online:
             new_text = "Socket ON" if self.device.state_off_on else "Socket OFF"

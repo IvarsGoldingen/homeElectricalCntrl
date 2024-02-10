@@ -258,10 +258,10 @@ class ValloxAhu(Subject):
                 return False
             logger.debug("Opened, delaying until dashboard controls found")
             # Sleep because AHU hangs up - possibly because instant polling
-            time.sleep(1.0)
+            time.sleep(2.0)
             try:
                 # Increased poll frequency because ahu sometimes hangs up
-                WebDriverWait(self.driver, timeout=15, poll_frequency=5).until(EC.presence_of_element_located(
+                WebDriverWait(self.driver, timeout=30, poll_frequency=10).until(EC.presence_of_element_located(
                     (By.XPATH, "//div[@class='dashboard-controls']")))
                 logger.debug("Dashboard controls found")
             except TimeoutException:

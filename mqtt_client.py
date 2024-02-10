@@ -29,7 +29,7 @@ def test():
     client = MyMqttClient()
     client.add_listen_topic("shellyplus1-441793ab3fb4/#", test_cb)
     client.add_listen_topic("shellies/shellyplus1-441793ab3fb4/#", test_cb)
-    #client.add_listen_topic("shellies/shellyplug-s-80646F840029/#", test_cb)
+    client.add_listen_topic("shellies/shellyplug-s-80646F840029/#", test_cb)
     client.start(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
     device_bool = False
     test_cntr = 0
@@ -41,14 +41,14 @@ def test():
             if test_cntr % 10 == 0:
                 if not device_bool:
                     print("turning on")
-                    client.publish("shellyplus1-441793ab3fb4/command/switch:0", "on")
+                    #client.publish("shellyplus1-441793ab3fb4/command/switch:0", "on")
                     # get status of shelly relay
                     #client.publish("shellyplus1-441793ab3fb4/command", "status_update")
                     # For plug
                     #client.publish("shellies/shellyplug-s-80646F840029/relay/0/command", "on")
                 else:
                     print("turning off")
-                    client.publish("shellyplus1-441793ab3fb4/command/switch:0", "off")
+                    #client.publish("shellyplus1-441793ab3fb4/command/switch:0", "off")
 
 
                 device_bool = not device_bool
