@@ -6,6 +6,7 @@ from sensor import Sensor
 
 def main_fc():
     db_mngr = DbMngr()
+    # db_mngr.fix_id_for_shelly_table()
     db_mngr.fix_wmin_to_kwh_in_shelly_table()
     # db_mngr.create_all_tables()
     # insert_new_device_in_dev_table(db_mngr)
@@ -143,12 +144,29 @@ class DbMngr:
         self.create_table_of_sensors()
         self.create_table_of_sensor_data()
 
+    def fix_id_for_shelly_table(self, start_id=224):
+        """
+        Table was created without setting id as primary key, change none values to correct int
+        @return:
+        """
+        self.cursor.execute(f"SELECT id, device_id, device_status, record_time FROM shelly_data WHERE id IS NULL")
+        rows = self.cursor.fetchall()
+        new_id = start_id
+        for i, row in enumerate(rows):
+            print(i)
+            id,device_id, device_status,record_time = row
+            self.cursor.execute('UPDATE shelly_data SET id = ? WHERE record_time = ? AND device_id = ? AND device_status = ?',
+                                (new_id,record_time, device_id, device_status))
+            new_id += 1
+        print(len(rows))
+        self.conn.commit()
+
     def fix_wmin_to_kwh_in_shelly_table(self):
         """
         Change energy reading from wmin to kWh
         @return:
         """
-        self.cursor.execute(f"SELECT id, energy FROM shelly_data ORDER BY id")
+        self.cursor.execute(f"SELECT id, energy FROM shelly_data")
         rows = self.cursor.fetchall()
         for row in rows:
             id, energy_wh = row
