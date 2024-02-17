@@ -7,7 +7,7 @@ from sensor import Sensor
 def main_fc():
     db_mngr = DbMngr()
     # db_mngr.fix_id_for_shelly_table()
-    db_mngr.fix_wmin_to_kwh_in_shelly_table()
+    # db_mngr.fix_wmin_to_kwh_in_shelly_table()
     # db_mngr.create_all_tables()
     # insert_new_device_in_dev_table(db_mngr)
     # insert_fake_devices(db_mngr)

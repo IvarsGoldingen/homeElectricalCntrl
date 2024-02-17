@@ -90,8 +90,8 @@ class ShellyPlug(MqttDevice):
     def loop(self):
         """
         Call periodically
-        checks wether set device status equals set state
-        And checks when the last msg received from it to detect device not connected
+        Checks wether set device status equals set state
+        Checks when the last msg received from it to detect device not connected
         :return:
         """
         self.check_status_online_offline()
@@ -122,8 +122,6 @@ class ShellyPlug(MqttDevice):
         :param data: payload
         :return:
         """
-        # logger.debug(f"{self.name} received from mqtt:")
-        # logger.debug(f"Topic: {topic} Data: P{data}")
         if topic in self.topic_mapping:
             self.time_of_last_msg = time.perf_counter()
             # The message received corresponds to one of the values
@@ -135,12 +133,12 @@ class ShellyPlug(MqttDevice):
                 # handle bools differently because if cast from string they will always be true
                 if topic == self.state_topic:
                     # For state the data is either "on" or "off"
-                    if clean_data == "on":
+                    if clean_data.lower() == "on":
                         self.state_off_on = True
-                    elif clean_data == "off":
+                    elif clean_data.lower() == "off":
                         self.state_off_on = False
                     else:
-                        logger.error("Unknown value for bool variable")
+                        logger.error(f"Unknown value for bool variable: {clean_data}")
             else:
                 # All other are int, real values that have to be cast from str
                 try:
