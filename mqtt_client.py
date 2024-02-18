@@ -44,12 +44,10 @@ def test():
                     # get status of shelly relay
                     client.publish("shellyplus1-441793ab3fb4/command", "status_update")
                     # For plug
-                    #client.publish("shellies/shellyplug-s-80646F840029/relay/0/command", "on")
+                    # client.publish("shellies/shellyplug-s-80646F840029/relay/0/command", "on")
                 else:
                     print("turning off")
                     # client.publish("shellyplus1-441793ab3fb4/command/switch:0", "off")
-
-
                 device_bool = not device_bool
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt caught. Exiting gracefully.")
@@ -82,7 +80,7 @@ class MyMqttClient(Subject):
         self.subscription_dict = {}
 
     def start(self, broker_addr: str, port: int, user: str, psw: str):
-        #Start the mqtt client thread
+        # Start the mqtt client thread
         self.mqtt_cl_thread = self.MqttClientThread(broker_addr=broker_addr, port=port, user=user, psw=psw,
                                                     queue_to_mqtt_thread=self.queue_to_mqtt_thread,
                                                     queue_from_mqtt_thread=self.queue_from_mqtt_thread)

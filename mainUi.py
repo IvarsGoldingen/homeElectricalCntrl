@@ -19,11 +19,13 @@ from tkinter import Tk, Label, Button, Frame
 import logging
 from vallux_ahu import ValloxAhu
 from devices.shellyPlugMqtt import ShellyPlug
+from devices.shellyPlus import ShellyPlus
 from devices.device import Device
 from devices.deviceTypes import DeviceType
 from mqtt_client import MyMqttClient
 from price_file_manager import PriceFileManager
 from custom_tk_widgets.shelly_plug_widget import ShellyPlugWidget
+from custom_tk_widgets.shelly_plus_widget import ShellyPlusWidget
 from custom_tk_widgets.schedule_2_days_widget import Schedule2DaysWidget
 from schedules.hourly_schedule import HourlySchedule2days
 from schedules.auto_schedule_creator import AutoScheduleCreator
@@ -187,10 +189,15 @@ class MainUIClass(Tk, Observer):
         self.plug2 = ShellyPlug(name="Plug 2",
                                 mqtt_publish=self.mqtt_client.publish,
                                 plug_id="shellyplug-s-C8C9A3B8E92E")
+        self.smart_relay1 = ShellyPlus(name="Relay 1",
+                                       mqtt_publish=self.mqtt_client.publish,
+                                       plug_id="shellyplus1-441793ab3fb4")
         self.dev_list.append(self.plug1)
         self.dev_list.append(self.plug2)
+        self.dev_list.append(self.smart_relay1)
         for dev in self.dev_list:
-            if dev.device_type == DeviceType.SHELLY_PLUG:
+            if dev.device_type == DeviceType.SHELLY_PLUG or\
+                dev.device_type == DeviceType.SHELLY_PLUS:
                 # if device is an MQTT device, register the topic that should be subscribed to and a callback
                 # for receiving messages from that topic
                 self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)
@@ -235,6 +242,14 @@ class MainUIClass(Tk, Observer):
                 dev.register(shelly_widget, Device.event_name_status_changed)
                 dev.register(shelly_widget, ShellyPlug.event_name_new_extra_data)
                 self.dev_widgets.append(shelly_widget)
+            elif dev.device_type == DeviceType.SHELLY_PLUS:
+                shelly_plus_widget = ShellyPlusWidget(parent=self.frame_devices, device=dev)
+                dev.register(shelly_plus_widget, Device.event_name_status_changed)
+                dev.register(shelly_plus_widget, ShellyPlus.event_name_new_extra_data)
+                dev.register(shelly_plus_widget, ShellyPlus.event_name_input_state_change)
+                self.dev_widgets.append(shelly_plus_widget)
+            else:
+                logger.warning("Device list contains device without widget associated to its type")
         # Ahu widget
         self.ahu_widget = AhuWidget(parent=self.frame_devices, ahu=self.ahu)
         self.ahu.register(self.ahu_widget, ValloxAhu.event_name_new_data)

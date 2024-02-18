@@ -150,9 +150,9 @@ class ShellyPlus(MqttDevice):
             relevant_msg_received = True
             input_off_on = self.handle_input_json(clean_data)
             if input_off_on != self.di_off_on:
+                self.di_off_on = input_off_on
                 # Notify listening devices off input state change
                 self.device_notify(self.event_name_input_state_change, self.name, self.device_type)
-            self.di_off_on = input_off_on
         else:
             # Handle unrecognized topics if needed
             pass
@@ -193,9 +193,7 @@ class ShellyPlus(MqttDevice):
         logger.debug(f"Handling JSON input data {data}")
         try:
             data_dict = json.loads(data)
-            logger.debug(f"Input dict = {data_dict}")
             input_off_on = data_dict["state"]
-            logger.debug(f"Input is {input_off_on}")
             return input_off_on
         except json.decoder.JSONDecodeError:
             logger.error(f"Failed to parce input json data: {data}")

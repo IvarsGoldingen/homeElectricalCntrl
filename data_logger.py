@@ -50,8 +50,8 @@ class DataLogger(Observer):
     def __init__(self, get_prices_method: Callable[[], Tuple[Dict, Dict]], device_list: list[Device],
                  sensor_list: list[Sensor], periodical_log_interval_s: float = 3600.0):
         """
-        :param get_prices_method: Method to call for this class to get the prices of electricitt
-        :param device_list: list of devices hwose data is to be logged
+        :param get_prices_method: Method to call for this class to get the prices of electricity
+        :param device_list: list of devices whose data is to be logged
         :param sensor_list: list of sensors to be logged
         :param periodical_log_interval_s: how often to periodically log device data
         """
