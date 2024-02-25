@@ -4,11 +4,12 @@ Has 2 modes:
 Manual = controlled by user
 Auto = controlled by program, algorthm etc.
 """
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 import logging
 import os
 from devices.deviceTypes import DeviceType
-from observer_pattern import DeviceSubject
+from helpers.observer_pattern import DeviceSubject
+from helpers.state_saver import StateSaver
 
 
 # Setup logging
@@ -27,7 +28,7 @@ file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 
 
-class Device(DeviceSubject):
+class Device(DeviceSubject, StateSaver):
     # Types of devices
 
     STATUS_FAULT = 0
@@ -50,10 +51,12 @@ class Device(DeviceSubject):
 
     event_name_status_changed = "device_status_changed"
 
-    def __init__(self, device_type: DeviceType, name: str = "Test_device"):
+    def __init__(self, device_type: DeviceType, name: str = "Test_device",
+                 state_file_loc: str ="C:\\py_related\\home_el_cntrl\\state"):
         # On or off setpoint for device which it listens to if it is the corresponding mode
         # _man_run always holds the current setpoint
         super().__init__()
+        self.state_file_loc = state_file_loc
         self._man_run = False
         self._auto_run = False
         # device will be turned off in either mode
@@ -62,13 +65,40 @@ class Device(DeviceSubject):
         self.device_type = device_type
         # if false device in auto mode if true in manual mode
         self.auto_man = False
+        self.load_state()
+
+    def save_state(self):
+        state_to_save = {
+            "auto_man": self.auto_man,
+            "_man_run": self._man_run,
+            "_auto_run": self._auto_run
+        }
+        StateSaver.save_state_to_file(base_path=self.state_file_loc, data=state_to_save, name=self.name)
+
+    def load_state(self):
+        loaded_state = StateSaver.load_state_from_file(base_path=self.state_file_loc, name=self.name)
+        if loaded_state is not None:
+            try:
+                self.auto_man = loaded_state["auto_man"]
+                self._man_run = loaded_state["_man_run"]
+                self._auto_run = loaded_state["_auto_run"]
+                self.set_manual_run(self._man_run) if self.auto_man else self.set_auto_run(self._auto_run)
+            except KeyError as e:
+                logger.error(f"KeyError while loading state: {e}")
+            except Exception as e:
+                logger.error(f"Failed to load state. Error: {e}")
+        else:
+            logger.info(f"No state file for this object {self.name} in {self.state_file_loc}")
 
     def set_mode(self, auto_man):
-        self.auto_man = auto_man
-        if not self.auto_man:
-            # if switched to auto mode, write auto cmd to device
-            self.set_auto_run(self._auto_run)
-        self.device_notify(self.event_name_status_changed, self.name, self.device_type)
+        if auto_man != self.auto_man:
+            self.auto_man = auto_man
+            self.device_notify(self.event_name_status_changed, self.name, self.device_type)
+            self.save_state()
+        # if not self.auto_man:
+        #     # if switched to auto mode, write auto cmd to device
+        #     self.set_auto_run(self._auto_run)
+
 
     def set_block(self, block: bool):
         """
@@ -92,11 +122,15 @@ class Device(DeviceSubject):
         :param off_on: turn the device on or off - manual mode only
         :return:
         """
-        if self.auto_man:
-            # if device in manual mode allow control
+        if not self.auto_man:
+            # device in auto mode, manual control not possible
+            return
+        if off_on != self._man_run:
+            # execute only if commande differs from current
             self._man_run = self._block_check(off_on)
             self._turn_device_off_on(self._man_run)
-        self.device_notify(self.event_name_status_changed, self.name, self.device_type)
+            self.device_notify(self.event_name_status_changed, self.name, self.device_type)
+            self.save_state()
 
     def get_cmd_given(self):
         # The final command is written in man_run so return that
@@ -108,12 +142,14 @@ class Device(DeviceSubject):
         :param off_on: turn the device on or off - auto mode only
         :return:
         """
+        if self.auto_man:
+            # device in manual mode, auto control not possible
+            return
         if off_on != self._auto_run:
             self._auto_run = off_on
             # notify observers only if state changes
             self.device_notify(self.event_name_status_changed, self.name, self.device_type)
-        if not self.auto_man:
-            # device in auto mode
+            self.save_state()
             # write same to man run so when switching from auto to man does not change device state
             self._man_run = self._block_check(self._auto_run)
             self._turn_device_off_on(self._man_run)

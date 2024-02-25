@@ -14,16 +14,15 @@ TODO: MQTT security
 import os
 from threading import Timer
 import subprocess
-from dataclasses import fields
 from tkinter import Tk, Label, Button, Frame
 import logging
-from vallux_ahu import ValloxAhu
+from custom_devices.vallux_ahu import ValloxAhu
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.shellyPlus import ShellyPlus
 from devices.device import Device
 from devices.deviceTypes import DeviceType
-from mqtt_client import MyMqttClient
-from price_file_manager import PriceFileManager
+from helpers.mqtt_client import MyMqttClient
+from helpers.price_file_manager import PriceFileManager
 from custom_tk_widgets.shelly_plug_widget import ShellyPlugWidget
 from custom_tk_widgets.shelly_plus_widget import ShellyPlusWidget
 from custom_tk_widgets.schedule_2_days_widget import Schedule2DaysWidget
@@ -33,8 +32,8 @@ from schedules.daily_timed_schedule import DailyTimedSchedule
 from custom_tk_widgets.auto_hourly_schedule_creator_widget import AutoHourlyScheduleCreatorWidget
 from custom_tk_widgets.daily_timed_schedule_widget import DailyTimedScheduleCreatorWidget
 from custom_tk_widgets.ahu_widget import AhuWidget
-from observer_pattern import Observer
-from data_logger import DataLogger
+from helpers.observer_pattern import Observer
+from helpers.data_logger import DataLogger
 import secrets
 
 # Setup logging

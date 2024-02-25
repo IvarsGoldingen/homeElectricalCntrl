@@ -13,8 +13,8 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
-from observer_pattern import Subject
-from sensor import Sensor
+from helpers.observer_pattern import Subject
+from helpers.sensor import Sensor
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -25,7 +25,7 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 # File logger
-file_handler = logging.FileHandler(os.path.join("logs", "ahu.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "ahu.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)

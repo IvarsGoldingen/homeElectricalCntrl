@@ -2,8 +2,8 @@ import os
 import datetime
 import logging
 import time
-from get_nordpool import NordpoolGetter
-from observer_pattern import Subject
+from helpers.get_nordpool import NordpoolGetter
+from helpers.observer_pattern import Subject
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -15,7 +15,7 @@ stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 
 # File logger
-file_handler = logging.FileHandler(os.path.join("logs", "script_file_manager.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "script_file_manager.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)

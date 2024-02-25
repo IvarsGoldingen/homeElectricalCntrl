@@ -11,7 +11,7 @@ import json
 from devices.deviceTypes import DeviceType
 from devices.mqttDevice import MqttDevice
 from devices.device import Device
-from mqtt_client import MyMqttClient
+from helpers.mqtt_client import MyMqttClient
 import secrets
 
 # Setup logging

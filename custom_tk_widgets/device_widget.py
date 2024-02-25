@@ -2,7 +2,7 @@ from functools import partial
 import tkinter as tk
 from tkinter import Label, Button, font
 from devices.device import Device
-from observer_pattern import Observer
+from helpers.observer_pattern import Observer
 
 
 class DeviceWidget(tk.Frame, Observer):

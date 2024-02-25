@@ -7,13 +7,13 @@ import time
 import threading
 from datetime import datetime, timedelta
 from typing import Callable, Dict, Tuple
-from observer_pattern import Observer
-from price_file_manager import PriceFileManager
+from helpers.observer_pattern import Observer
+from helpers.price_file_manager import PriceFileManager
 from devices.device import Device
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.deviceTypes import DeviceType
-from sensor import Sensor
-from database_mngr import DbMngr
+from helpers.sensor import Sensor
+from helpers.database_mngr import DbMngr
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -25,7 +25,7 @@ stream_handler.setFormatter(log_formatter)
 stream_handler.setLevel(logging.DEBUG)
 logger.addHandler(stream_handler)
 # File logger
-file_handler = logging.FileHandler(os.path.join("logs", "data_logger.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "data_logger.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)

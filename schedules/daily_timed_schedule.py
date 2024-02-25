@@ -4,7 +4,7 @@ import time
 import schedule
 from devices.device import Device
 from typing import List, Optional
-from observer_pattern import Subject
+from helpers.observer_pattern import Subject
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')

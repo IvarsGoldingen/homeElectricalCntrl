@@ -6,7 +6,7 @@ import time
 from queue import Queue
 from typing import Callable
 from enum import Enum, auto
-from observer_pattern import Subject
+from helpers.observer_pattern import Subject
 import secrets
 
 # Setup logging
@@ -19,7 +19,7 @@ stream_handler.setFormatter(log_formatter)
 stream_handler.setLevel(logging.INFO)
 logger.addHandler(stream_handler)
 # File logger
-file_handler = logging.FileHandler(os.path.join("logs", "mqtt_client.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "mqtt_client.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)

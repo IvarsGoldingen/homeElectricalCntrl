@@ -4,7 +4,7 @@ import logging
 import tkinter as tk
 from tkinter import Label, font, Frame, Checkbutton, BooleanVar
 from schedules.hourly_schedule import HourlySchedule2days
-from observer_pattern import Observer
+from helpers.observer_pattern import Observer
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')

@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import Label, Button, font
-from vallux_ahu import ValloxAhu
-from observer_pattern import Observer
+from custom_devices.vallux_ahu import ValloxAhu
+from helpers.observer_pattern import Observer
 import webbrowser
 
 

@@ -2,7 +2,7 @@ import sqlite3
 import os
 from datetime import datetime, timedelta, timezone
 from devices.deviceTypes import DeviceType
-from sensor import Sensor
+from helpers.sensor import Sensor
 
 def main_fc():
     db_mngr = DbMngr()
