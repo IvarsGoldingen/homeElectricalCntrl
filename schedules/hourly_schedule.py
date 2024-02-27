@@ -65,7 +65,7 @@ class HourlySchedule2days(Subject, StateSaver):
         state_to_save = {
             "schedule_today": self.schedule_today,
             "schedule_tomorrow": self.schedule_tomorrow,
-            "datetime_now": self.datetime_now
+            "datetime_now": self.datetime_now.strftime("%Y-%m-%d")
         }
         StateSaver.save_state_to_file(base_path=self.state_file_loc, data=state_to_save, name=self.name)
 
@@ -76,11 +76,17 @@ class HourlySchedule2days(Subject, StateSaver):
             return
         try:
             state_date_time = loaded_state["datetime_now"]
-            if state_date_time != self.datetime_now:
+            if datetime.date.fromisoformat(state_date_time) != self.datetime_now:
                 logger.info(f"State for {self.name} is from an earlier date, state is not loaded")
                 return
-            self.schedule_today = loaded_state["schedule_today"]
-            self.schedule_tomorrow = loaded_state["schedule_tomorrow"]
+            # Dictionary keys are read as strings from JSON, comvert them to ints
+            schedule_today_temp = loaded_state["schedule_today"]
+            self.schedule_today = {int(key): value for key, value in schedule_today_temp.items()}
+            schedule_tomorrow_temp = loaded_state["schedule_tomorrow"]
+            self.schedule_tomorrow = {int(key): value for key, value in schedule_tomorrow_temp.items()}
+            logger.debug(f"State retrieved successfully for {self.name}")
+            logger.debug(f"Schedule today {self.schedule_today}")
+            logger.debug(f"Schedule today {self.schedule_tomorrow}")
         except KeyError as e:
             logger.error(f"KeyError while loading state object {self.name}: {e}")
         except Exception as e:
