@@ -5,6 +5,7 @@ import schedule
 from devices.device import Device
 from typing import List, Optional
 from helpers.observer_pattern import Subject
+from helpers.state_saver import StateSaver
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -36,7 +37,7 @@ def test():
         print("Keyboard interrupt received. Exiting...")
 
 
-class DailyTimedSchedule(Subject):
+class DailyTimedSchedule(Subject, StateSaver):
     """
     Class for controlling devices by setting time of turning on and how long to be on
     """
@@ -44,10 +45,11 @@ class DailyTimedSchedule(Subject):
     event_name_schedule_change = "schedule_status_changed"
     event_name_new_device_associated = "new_device_associated"
 
-    def __init__(self, name: str = "Alarm clock",
+    def __init__(self, name: str = "Test DailyTimedSchedule",
                  hour_on: int = 6,
                  minute_on: int = 45,
-                 on_time_min: int = 15):
+                 on_time_min: int = 15,
+                 state_file_loc: str = "C:\\py_related\\home_el_cntrl\\state"):
         """
         :param name: name of schedule
         :param hour_on: at what hour to turn on
@@ -56,6 +58,10 @@ class DailyTimedSchedule(Subject):
         """
         # Devices linked to this schedule - used to execute schedule
         super().__init__()
+        self.name = name
+        self.state_file_loc = state_file_loc
+        # if false, will be executed once
+        self.repeat_daily = True
         self._hour_on = 6
         self._minute_on = 45
         self._on_time_min = 15
@@ -63,15 +69,42 @@ class DailyTimedSchedule(Subject):
         self._schedule_enabled = False
         # should device be on or off
         self._command = False
+        self.load_state()
         # Base schedule
         self.schedule_base = schedule.Scheduler()
         self.set_settings(hour_on, minute_on, on_time_min)
-        self.name = name
         # Devices that are controlled by this schedule
         self.device_list: Optional[List[Device]] = []
-        # if false, will be executed once
-        self.repeat_daily = True
         self.time_when_dev_was_turned_on_s = 0
+
+
+    def save_state(self):
+        state_dict = {
+            "_hour_on": self._hour_on,
+            "_minute_on": self._minute_on,
+            "_on_time_min": self._on_time_min,
+            "_schedule_enabled": self._schedule_enabled,
+            "_command": self._command,
+            "repeat_daily": self.repeat_daily
+        }
+        self.save_state_to_file(base_path=self.state_file_loc, name=self.name, data=state_dict)
+
+    def load_state(self):
+        loaded_state = StateSaver.load_state_from_file(base_path=self.state_file_loc, name=self.name)
+        if loaded_state is None:
+            logger.info(f"No state file for this object {self.name} in {self.state_file_loc}")
+            return
+        try:
+            self._hour_on = loaded_state["_hour_on"]
+            self._minute_on = loaded_state["_minute_on"]
+            self._on_time_min = loaded_state["_on_time_min"]
+            self._schedule_enabled = loaded_state["_schedule_enabled"]
+            self._command = loaded_state["_command"]
+            self.repeat_daily = loaded_state["repeat_daily"]
+        except KeyError as e:
+            logger.error(f"KeyError while loading state object {self.name}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to load state object {self.name}. Error: {e}")
 
     def loop(self):
         """
@@ -112,8 +145,9 @@ class DailyTimedSchedule(Subject):
             self._minute_on = minute_on
         if 0 < on_time_min < 1440:
             self._on_time_min = on_time_min
-        self.enable_schedule()
-        self.notify_observers(self.event_name_schedule_change)
+        if self._schedule_enabled:
+            # Set new settings if schedule enabled
+            self.enable_schedule()
 
     def get_settings(self, ):
         return self._hour_on, self._minute_on, self._on_time_min
@@ -138,7 +172,7 @@ class DailyTimedSchedule(Subject):
             # There is no on command so no need to turn off
             return False
         time_passed_s = time.perf_counter() - self.time_when_dev_was_turned_on_s
-        #Full  minutes passed
+        # Full  minutes passed
         time_passed_minutes = time_passed_s // 60
         if time_passed_minutes >= self._on_time_min:
             return True

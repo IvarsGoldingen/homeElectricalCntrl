@@ -61,21 +61,11 @@ class AutoScheduleCreator:
         self._max_hours_to_run = max_hours_to_run
         self._min_hours_to_run = min_hours_to_run
         self.set_auto_create_enabled(True)
-        self.debug_first_print = True
 
     def loop(self):
-        if self.debug_first_print:
-            logger.debug("First loop")
         # Call periodically to execute auto schedule creation
         if self._auto_create_enabled:
-            if self.debug_first_print:
-                logger.debug("Auto create enabled")
             schedule.run_pending()
-        else:
-            if self.debug_first_print:
-                logger.debug("Auto create disabled")
-        if self.debug_first_print:
-            self.debug_first_print = False
 
     def set_parameters(self,
                        auto_create_period: int = 8,

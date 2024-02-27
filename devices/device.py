@@ -77,27 +77,28 @@ class Device(DeviceSubject, StateSaver):
 
     def load_state(self):
         loaded_state = StateSaver.load_state_from_file(base_path=self.state_file_loc, name=self.name)
-        if loaded_state is not None:
-            try:
-                self.auto_man = loaded_state["auto_man"]
-                self._man_run = loaded_state["_man_run"]
-                self._auto_run = loaded_state["_auto_run"]
-                self.set_manual_run(self._man_run) if self.auto_man else self.set_auto_run(self._auto_run)
-            except KeyError as e:
-                logger.error(f"KeyError while loading state: {e}")
-            except Exception as e:
-                logger.error(f"Failed to load state. Error: {e}")
-        else:
+        if loaded_state is None:
             logger.info(f"No state file for this object {self.name} in {self.state_file_loc}")
+            return
+        try:
+            self.auto_man = loaded_state["auto_man"]
+            self._man_run = loaded_state["_man_run"]
+            self._auto_run = loaded_state["_auto_run"]
+            self.set_manual_run(self._man_run) if self.auto_man else self.set_auto_run(self._auto_run)
+        except KeyError as e:
+            logger.error(f"KeyError while loading state object {self.name}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to load state object {self.name}. Error: {e}")
 
     def set_mode(self, auto_man):
         if auto_man != self.auto_man:
             self.auto_man = auto_man
+            if not self.auto_man:
+                # if switched to auto mode, write auto cmd to device
+                self.set_auto_run(self._auto_run)
             self.device_notify(self.event_name_status_changed, self.name, self.device_type)
             self.save_state()
-        # if not self.auto_man:
-        #     # if switched to auto mode, write auto cmd to device
-        #     self.set_auto_run(self._auto_run)
+
 
 
     def set_block(self, block: bool):

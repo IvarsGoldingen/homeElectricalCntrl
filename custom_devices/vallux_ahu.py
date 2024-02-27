@@ -25,7 +25,7 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 # File logger
-file_handler = logging.FileHandler(os.path.join("../logs", "ahu.log"))
+file_handler = logging.FileHandler(os.path.join("/logs", "ahu.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)

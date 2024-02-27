@@ -44,7 +44,6 @@ def test():
 class ScheduleCreator:
     """
     Class for creating on off schedules for devices according to electricity prices.
-    TODO: continue with implementing this in UI
     """
 
     @staticmethod

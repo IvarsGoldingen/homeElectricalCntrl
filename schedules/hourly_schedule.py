@@ -5,6 +5,7 @@ import time
 from devices.device import Device
 from typing import List, Optional
 from helpers.observer_pattern import Subject
+from helpers.state_saver import StateSaver
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -36,7 +37,7 @@ def test():
         print("Test stopped")
 
 
-class HourlySchedule2days(Subject):
+class HourlySchedule2days(Subject, StateSaver):
     """
     Class for controlling devices in an hourly schedule for today and tomorrow
     """
@@ -44,19 +45,46 @@ class HourlySchedule2days(Subject):
     event_name_schedule_change = "schedule_changed"
     event_name_new_device_associated = "new_device_associated"
 
-    def __init__(self, name: str):
+    def __init__(self, name: str,state_file_loc: str ="C:\\py_related\\home_el_cntrl\\state"):
         """
         :param name: Name of schedule
         """
         super().__init__()
         self.name = name
+        self.state_file_loc = state_file_loc
         # Dictionarries holding keys from 0 to 23 representing hours in each day
         # If the value of a hour key is true device should be on for that hour
         self.schedule_today = {key: False for key in range(24)}
         self.schedule_tomorrow = {key: False for key in range(24)}
         self.datetime_now = datetime.date.today()
+        self.load_state()
         # Devices linked to this schedule - used to execute schedule
         self.device_list: Optional[List[Device]] = []
+
+    def save_state(self):
+        state_to_save = {
+            "schedule_today": self.schedule_today,
+            "schedule_tomorrow": self.schedule_tomorrow,
+            "datetime_now": self.datetime_now
+        }
+        StateSaver.save_state_to_file(base_path=self.state_file_loc, data=state_to_save, name=self.name)
+
+    def load_state(self):
+        loaded_state = StateSaver.load_state_from_file(base_path=self.state_file_loc, name=self.name)
+        if loaded_state is None:
+            logger.info(f"No state file for this object {self.name} in {self.state_file_loc}")
+            return
+        try:
+            state_date_time = loaded_state["datetime_now"]
+            if state_date_time != self.datetime_now:
+                logger.info(f"State for {self.name} is from an earlier date, state is not loaded")
+                return
+            self.schedule_today = loaded_state["schedule_today"]
+            self.schedule_tomorrow = loaded_state["schedule_tomorrow"]
+        except KeyError as e:
+            logger.error(f"KeyError while loading state object {self.name}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to load state object {self.name}. Error: {e}")
 
     def loop(self):
         """
@@ -95,13 +123,14 @@ class HourlySchedule2days(Subject):
         :return:
         """
         logger.debug(f"Schedule single hour change")
-        if 0 <= hour <= 23:
-            if not today_tomorrow:
-                self.schedule_today[hour] = cmd
-            else:
-                self.schedule_tomorrow[hour] = cmd
-        else:
+        if hour > 23 or hour < 0:
             logger.error("Invalid hour set")
+            return
+        if not today_tomorrow:
+            self.schedule_today[hour] = cmd
+        else:
+            self.schedule_tomorrow[hour] = cmd
+        self.save_state()
         logger.debug(f"Schedule today: {self.schedule_today}")
         logger.debug(f"Schedule tomorrow: {self.schedule_tomorrow}")
         self.notify_observers(self.event_name_schedule_change)
@@ -114,14 +143,15 @@ class HourlySchedule2days(Subject):
         :return:
         """
         logger.debug(f"Schedule full day change")
-        if len(schedule) == 24:
-            if not today_tomorrow:
-                self.schedule_today.update(schedule)
-            else:
-                self.schedule_tomorrow.update(schedule)
-            self.notify_observers(self.event_name_schedule_change)
-        else:
+        if len(schedule) != 24:
             logger.error("Invalid schedule set")
+            return
+        if not today_tomorrow:
+            self.schedule_today.update(schedule)
+        else:
+            self.schedule_tomorrow.update(schedule)
+        self.save_state()
+        self.notify_observers(self.event_name_schedule_change)
 
     def get_current_expected_state(self):
         """
@@ -141,6 +171,7 @@ class HourlySchedule2days(Subject):
         # new day
         self.datetime_now = actual_today
         self.move_tomorrow_in_today()
+        self.save_state()
         self.notify_observers(self.event_name_schedule_change)
 
     def move_tomorrow_in_today(self):
