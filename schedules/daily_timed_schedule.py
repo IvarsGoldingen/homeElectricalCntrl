@@ -148,6 +148,9 @@ class DailyTimedSchedule(Subject, StateSaver):
         if self._schedule_enabled:
             # Set new settings if schedule enabled
             self.enable_schedule()
+        else:
+            # Notify that settings have been changed, on enable notification will happen in that method
+            self.notify_observers(self.event_name_schedule_change)
 
     def get_settings(self, ):
         return self._hour_on, self._minute_on, self._on_time_min

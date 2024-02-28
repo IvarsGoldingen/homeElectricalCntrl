@@ -30,8 +30,7 @@ def test():
                             10: 104.39, 11: 88.69, 12: 81.28, 13: 90.18, 14: 88.63, 15: 90.23, 16: 93.46, 17: 101.96,
                             18: 104.0,
                             19: 0.2, 20: 200.09, 21: 93.49, 22: 7.18, 23: 1.34}
-    test = AutoScheduleCreator(auto_create_period=8,
-                               get_prices_method=lambda: (fake_prices_today, fake_prices_tomorrow))
+    test = AutoScheduleCreator(get_prices_method=lambda: (fake_prices_today, fake_prices_tomorrow))
     test.set_scheduled_times()
 
 
@@ -39,7 +38,6 @@ class AutoScheduleCreator:
     """
     Class for repeatedly creating schedules to turn devices on or off for the upcoming hours
     """
-
     # Auto schedule create periods allowed in hours
     ALLOWED_PERIODS = [6, 8, 12, 24]
     # At what minute is the schedule created - 23:55, 15:55 ... for 8 hour period
@@ -48,18 +46,22 @@ class AutoScheduleCreator:
     def __init__(self,
                  get_prices_method: Callable[[], Tuple[Dict, Dict]],
                  hourly_schedule: HourlySchedule2days = None,
-                 auto_create_period: int = 6,
+                 period_split_h: int = 6,
                  max_total_cost: float = 300.0,
                  max_hours_to_run: int = 5,
-                 min_hours_to_run: int = 2):
+                 min_hours_to_run: int = 2,
+                 calculation_time_h: int = 16,
+                 calculation_time_min: int = 50):
         self._get_prices_method = get_prices_method
         self._auto_create_enabled = False
-        self._auto_create_period = auto_create_period
+        self._auto_create_period = 24
         self._hourly_schedule = hourly_schedule
-        # settings for schedule
         self._max_total_cost = max_total_cost
         self._max_hours_to_run = max_hours_to_run
         self._min_hours_to_run = min_hours_to_run
+        self._calculation_time_h = calculation_time_h
+        self._calculation_time_min = calculation_time_min
+        self._period_split_h = period_split_h
         self.set_auto_create_enabled(True)
 
     def loop(self):
@@ -68,20 +70,25 @@ class AutoScheduleCreator:
             schedule.run_pending()
 
     def set_parameters(self,
-                       auto_create_period: int = 8,
+                       period_split_h: int = 8,
                        max_total_cost: float = 50.0,
                        max_hours_to_run: int = 4,
-                       min_hours_to_run: int = 0):
-        self._auto_create_period = auto_create_period
+                       min_hours_to_run: int = 0,
+                       calculation_time_h: int = 16,
+                       calculation_time_min: int = 50):
+        self._period_split_h = period_split_h
         self._max_total_cost = max_total_cost
         self._max_hours_to_run = max_hours_to_run
         self._min_hours_to_run = min_hours_to_run
+        self._calculation_time_h = calculation_time_h
+        self._calculation_time_min = calculation_time_min
 
     def get_schedule_name(self):
         return self._hourly_schedule.name
 
     def get_parameters(self):
-        return self._auto_create_period, self._max_total_cost, self._max_hours_to_run, self._min_hours_to_run
+        return self._period_split_h, self._max_total_cost, self._max_hours_to_run, self._min_hours_to_run,\
+                self._calculation_time_h, self._calculation_time_min
 
     def set_auto_create_enabled(self, off_on: bool):
         self._auto_create_enabled = off_on
@@ -99,22 +106,19 @@ class AutoScheduleCreator:
 
     def set_scheduled_times(self):
         logger.info("Setting schedule times")
-        # Always start before midnight
-        start_hour = 23
-        # Set other execution times depending on schedule period
-        while start_hour > 0:
-            logger.info(f"Adding time {start_hour:02}:{self.MINUTE_START_AT:02}")
-            schedule.every().day.at(f"{start_hour:02}:{self.MINUTE_START_AT:02}").do(self.execute_schedule_generation)
-            start_hour -= self._auto_create_period
+        schedule_time_str = f"{self._calculation_time_h:02}:{self._calculation_time_min:02}"
+        logger.info(f"Adding time {schedule_time_str}")
+        schedule.every().day.at(f"{schedule_time_str}").do(self.execute_schedule_generation)
 
     def execute_schedule_generation(self):
         # get prices using the available method
         logger.info("Executing schedule creation")
         prices_today, prices_tomorrow = self._get_prices_method()
-        schedule_today, schedule_tomorrow = ScheduleCreator.get_schedule_from_prices(
+        schedule_today, schedule_tomorrow = ScheduleCreator.get_schedule_from_prices_v2(
             prices_today=prices_today,
             prices_tomorrow=prices_tomorrow,
             max_total_cost=self._max_total_cost,
+            period_h=self._period_split_h,
             hours_ahead_to_calculate=self._auto_create_period,
             max_hours_to_run=self._max_hours_to_run,
             min_hours_to_run=self._min_hours_to_run)
@@ -123,14 +127,14 @@ class AutoScheduleCreator:
             self._hourly_schedule.set_schedule_full_day(today_tomorrow=True, schedule=schedule_tomorrow)
         else:
             logger.warning("No schedule assigned to auto creator, printing results")
-            logger.warning(f"{schedule_today}\n{schedule_tomorrow}")
+            logger.warning(f"Today {schedule_today} Tomorrow {schedule_tomorrow}")
 
     def check_period(self):
-        if self._auto_create_period in self.ALLOWED_PERIODS:
+        if self._period_split_h in self.ALLOWED_PERIODS:
             return
         # Get the closest allowed period length
-        self._auto_create_period = min(self.ALLOWED_PERIODS, key=lambda x: abs(x - self._auto_create_period))
-        logger.debug(f"Changed period to {self._auto_create_period}")
+        self._period_split_h = min(self.ALLOWED_PERIODS, key=lambda x: abs(x - self._period_split_h))
+        logger.debug(f"Changed period to {self._period_split_h}")
 
 
 if __name__ == '__main__':

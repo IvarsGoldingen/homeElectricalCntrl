@@ -2,12 +2,7 @@
 Application for controlling home automation:
 *Control and monitoring of MQTT devices
 *Creating schedules according to electricity price
-TODO: save time values in UTC
-TODO: implement AHU device
-TODO: store data in DB
-TODO: graphs for stored values (Grafana?)
-TODO: load devices, schedules etc from files, allow creation of new ones automatically
-TODO: Ability to associate devices with schedules from UI
+TODO: SAVE STATE ONLY ON PROGRAM CLOSE?
 TODO: MQTT security
 """
 
