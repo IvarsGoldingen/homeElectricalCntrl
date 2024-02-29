@@ -99,8 +99,6 @@ class Device(DeviceSubject, StateSaver):
             self.device_notify(self.event_name_status_changed, self.name, self.device_type)
             self.save_state()
 
-
-
     def set_block(self, block: bool):
         """
         block or unblock the device
@@ -144,9 +142,11 @@ class Device(DeviceSubject, StateSaver):
         :return:
         """
         if self.auto_man:
+            self._auto_run = off_on
             # device in manual mode, auto control not possible
             return
-        if off_on != self._auto_run:
+        if off_on != self._man_run:
+            # check with _man_run because the final state is written in that
             self._auto_run = off_on
             # notify observers only if state changes
             self.device_notify(self.event_name_status_changed, self.name, self.device_type)
