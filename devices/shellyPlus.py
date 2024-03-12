@@ -66,13 +66,15 @@ class ShellyPlus(MqttDevice):
     # Digital input state change
     event_name_input_state_change = "device_input_state_change"
 
-    def __init__(self, plug_id: str, mqtt_publish: Callable[[str, str], None], name: str = "Test shelly plus"):
+    def __init__(self, plug_id: str, mqtt_publish: Callable[[str, str], None],
+                 name: str = "Test shelly plus",
+                 device_type: DeviceType = DeviceType.SHELLY_PLUS):
         """
         :param plug_id: must be set correct to read correct messages. See device web.
         :param mqtt_publish: method to call when a mqtt message should be published
         :param name: device name - for logs and UI
         """
-        super().__init__(mqtt_publish, name=name, device_type=DeviceType.SHELLY_PLUS)
+        super().__init__(mqtt_publish, name=name, device_type=device_type)
         self.plug_id = plug_id
         # Used to check wether device is available
         self.time_of_last_msg = 0

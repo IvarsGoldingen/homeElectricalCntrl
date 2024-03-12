@@ -2,9 +2,7 @@
 Application for controlling home automation:
 *Control and monitoring of MQTT devices
 *Creating schedules according to electricity price
-TODO: SAVE STATE ONLY ON PROGRAM CLOSE?
 TODO: MQTT security
-TODO: Switchin plug from man to auto did not turn it off although it was supposed to be auto off
 """
 
 import os
