@@ -76,6 +76,8 @@ class ShellyPlug(MqttDevice):
         self.energy = self.NO_DATA_VALUE
         self.temperature = self.NO_DATA_VALUE
         self.state_off_on = False
+        # To indicate to program that device state should not be checked until next msg received
+        self.cmd_sent_out = True
         self.overtemperature = 0
         # use dictionarry to map variables to topics
         # Define a mapping of topics to data variables and their data types
@@ -111,6 +113,9 @@ class ShellyPlug(MqttDevice):
         if not self.state_online:
             # Only do if device is online
             return
+        if self.cmd_sent_out:
+            # cmd was just given, wait for reply from device
+            return
         if self.get_cmd_given() != self.state_off_on:
             logger.warning(f"Device {self.name} state was not equal to set command")
             self._turn_device_off_on(self.get_cmd_given())
@@ -132,6 +137,7 @@ class ShellyPlug(MqttDevice):
             if data_type == bool:
                 # handle bools differently because if cast from string they will always be true
                 if topic == self.state_topic:
+                    self.cmd_sent_out = False
                     # For state the data is either "on" or "off"
                     if clean_data.lower() == "on":
                         self.state_off_on = True
@@ -190,6 +196,7 @@ class ShellyPlug(MqttDevice):
             return
         publish_payload = "on" if off_on else "off"
         self.mqtt_publish(self.publish_topic, publish_payload)
+        self.cmd_sent_out = True
 
 
 if __name__ == '__main__':

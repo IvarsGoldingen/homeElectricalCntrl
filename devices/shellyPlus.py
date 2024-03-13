@@ -94,7 +94,8 @@ class ShellyPlus(MqttDevice):
         self.temperature = self.NO_DATA_VALUE
         # State of outpuut
         self.state_off_on = False
-        # use dictionarry to map variables to topics
+        # To indicate to program that device state should not be checked until next msg received
+        self.cmd_sent_out = True
 
     def loop(self):
         """
@@ -130,6 +131,9 @@ class ShellyPlus(MqttDevice):
         if not self.state_online:
             # Only do if device is online
             return
+        if self.cmd_sent_out:
+            # cmd was just given, wait for reply from device
+            return
         if self.get_cmd_given() != self.state_off_on:
             logger.warning(f"Device {self.name} state was not equal to set command")
             self._turn_device_off_on(self.get_cmd_given())
@@ -148,6 +152,7 @@ class ShellyPlus(MqttDevice):
             relevant_msg_received = True
             self.state_off_on, self.temperature = self.handle_output_json(clean_data)
             self.device_notify(self.event_name_new_extra_data, self.name, self.device_type)
+            self.cmd_sent_out = False
         elif topic == self.input_topic:
             relevant_msg_received = True
             input_off_on = self.handle_input_json(clean_data)
@@ -215,6 +220,7 @@ class ShellyPlus(MqttDevice):
             return
         publish_payload = "on" if off_on else "off"
         self.mqtt_publish(self.sw_cntrl_topic, publish_payload)
+        self.cmd_sent_out = True
 
     def __str__(self):
         return (f"Name: {self.name} Online: {self.state_online} Output: {self.state_off_on} Input: {self.di_off_on} "

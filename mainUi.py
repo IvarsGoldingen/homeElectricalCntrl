@@ -13,12 +13,14 @@ import logging
 from custom_devices.vallux_ahu import ValloxAhu
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.shellyPlus import ShellyPlus
+from devices.shellyPlusPM import ShellyPlusPM
 from devices.device import Device
 from devices.deviceTypes import DeviceType
 from helpers.mqtt_client import MyMqttClient
 from helpers.price_file_manager import PriceFileManager
 from custom_tk_widgets.shelly_plug_widget import ShellyPlugWidget
 from custom_tk_widgets.shelly_plus_widget import ShellyPlusWidget
+from custom_tk_widgets.shelly_plus_pm_widget import ShellyPlusPmWidget
 from custom_tk_widgets.schedule_2_days_widget import Schedule2DaysWidget
 from schedules.hourly_schedule import HourlySchedule2days
 from schedules.auto_schedule_creator import AutoScheduleCreator
@@ -169,7 +171,6 @@ class MainUIClass(Tk, Observer):
         self.christmas_lights = DailyTimedSchedule(name="Christmas lights", hour_on=18, minute_on=00, on_time_min=240)
         self.christmas_lights.add_device(self.plug2)
 
-
     def setup_devices(self):
         """
         Setup automation devices
@@ -185,18 +186,21 @@ class MainUIClass(Tk, Observer):
         self.smart_relay1 = ShellyPlus(name="Relay 1",
                                        mqtt_publish=self.mqtt_client.publish,
                                        plug_id="shellyplus1-441793ab3fb4")
+        self.smart_relay2 = ShellyPlusPM(name="Relay 2",
+                                         mqtt_publish=self.mqtt_client.publish,
+                                         plug_id="shellyplus1pm-d48afc417d58")
         self.dev_list.append(self.plug1)
         self.dev_list.append(self.plug2)
         self.dev_list.append(self.smart_relay1)
+        self.dev_list.append(self.smart_relay2)
         for dev in self.dev_list:
-            if dev.device_type == DeviceType.SHELLY_PLUG or\
-                dev.device_type == DeviceType.SHELLY_PLUS:
+            if dev.device_type == DeviceType.SHELLY_PLUG or \
+                    dev.device_type == DeviceType.SHELLY_PLUS or \
+                    dev.device_type == DeviceType.SHELLY_PLUS_PM:
                 # if device is an MQTT device, register the topic that should be subscribed to and a callback
                 # for receiving messages from that topic
                 self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)
         self.ahu = ValloxAhu(ip="http://192.168.94.117/")
-
-
 
     def set_up_ui(self):
         # Set up user interface
@@ -241,6 +245,12 @@ class MainUIClass(Tk, Observer):
                 dev.register(shelly_plus_widget, ShellyPlus.event_name_new_extra_data)
                 dev.register(shelly_plus_widget, ShellyPlus.event_name_input_state_change)
                 self.dev_widgets.append(shelly_plus_widget)
+            elif dev.device_type == DeviceType.SHELLY_PLUS_PM:
+                shelly_plus_pm_widget = ShellyPlusPmWidget(parent=self.frame_devices, device=dev)
+                dev.register(shelly_plus_pm_widget, Device.event_name_status_changed)
+                dev.register(shelly_plus_pm_widget, ShellyPlus.event_name_new_extra_data)
+                dev.register(shelly_plus_pm_widget, ShellyPlus.event_name_input_state_change)
+                self.dev_widgets.append(shelly_plus_pm_widget)
             else:
                 logger.warning("Device list contains device without widget associated to its type")
         # Ahu widget
@@ -258,9 +268,10 @@ class MainUIClass(Tk, Observer):
         self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_schedule_change)
         self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_new_device_associated)
         self.christmas_lights_widget = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
-                                                                  sch=self.christmas_lights)
+                                                                       sch=self.christmas_lights)
         self.christmas_lights.register(self.christmas_lights_widget, DailyTimedSchedule.event_name_schedule_change)
-        self.christmas_lights.register(self.christmas_lights_widget, DailyTimedSchedule.event_name_new_device_associated)
+        self.christmas_lights.register(self.christmas_lights_widget,
+                                       DailyTimedSchedule.event_name_new_device_associated)
 
     def place_ui_elements(self):
         """

@@ -82,6 +82,7 @@ class ShellyPlusPM(ShellyPlus):
             self.state_off_on, self.temperature, self.power_w, self.voltage, self.current, self.energy_kWh = (
                 self.handle_output_json(clean_data))
             self.device_notify(self.event_name_new_extra_data, self.name, self.device_type)
+            self.cmd_sent_out = False
         elif topic == self.input_topic:
             relevant_msg_received = True
             input_off_on = self.handle_input_json(clean_data)

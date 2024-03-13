@@ -77,7 +77,6 @@ class DailyTimedSchedule(Subject, StateSaver):
         self.device_list: Optional[List[Device]] = []
         self.time_when_dev_was_turned_on_s = 0
 
-
     def save_state(self):
         state_dict = {
             "_hour_on": self._hour_on,
@@ -130,12 +129,14 @@ class DailyTimedSchedule(Subject, StateSaver):
         self.schedule_base.every().day.at(f"{self._hour_on:02}:{self._minute_on:02}").do(self.turn_devices_on)
         self._schedule_enabled = True
         self.notify_observers(self.event_name_schedule_change)
+        self.save_state()
 
     def disable_schedule(self):
         logger.debug("Disabling schedule")
         self._schedule_enabled = False
         self.schedule_base.clear()
         self.notify_observers(self.event_name_schedule_change)
+        self.save_state()
 
     def set_settings(self, hour_on, minute_on, on_time_min):
         # Check if setting in range before applying
@@ -151,6 +152,7 @@ class DailyTimedSchedule(Subject, StateSaver):
         else:
             # Notify that settings have been changed, on enable notification will happen in that method
             self.notify_observers(self.event_name_schedule_change)
+            self.save_state()
 
     def get_settings(self, ):
         return self._hour_on, self._minute_on, self._on_time_min
