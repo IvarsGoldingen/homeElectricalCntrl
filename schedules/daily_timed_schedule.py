@@ -194,6 +194,13 @@ class DailyTimedSchedule(Subject, StateSaver):
         self.write_cmd_to_devices()
         self.notify_observers(self.event_name_schedule_change)
 
+    def toggle_command(self):
+        logger.debug("Toggling command")
+        self._command = not self._command
+        self.write_cmd_to_devices()
+        self.notify_observers(self.event_name_schedule_change)
+
+
     def add_device(self, device: Device):
         # Add a device to be controlled from this schedule
         self.device_list.append(device)

@@ -152,7 +152,7 @@ class DailyTimedScheduleCreatorWidget(tk.Frame):
                                            width=self.BTN_WIDTH_SMALL)
         self.btn_toggle_repeated = Button(self, text='REPEATED', command=self.toggle_repeated,
                                           width=self.BTN_WIDTH)
-        self.btn_turn_off = Button(self, text='TURN OFF', command=self.sch.turn_devices_off,
+        self.btn_turn_off = Button(self, text='TOGGLE COMMAND', command=self.sch.toggle_command,
                                           width=self.BTN_WIDTH)
 
     def _place_widget_elements(self):
