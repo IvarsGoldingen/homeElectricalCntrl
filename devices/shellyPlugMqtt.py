@@ -72,8 +72,8 @@ class ShellyPlug(MqttDevice):
         self.state_topic = f"{self.base_mqtt_topic}/relay/0"
         self.overtemperature_topic = f"{self.base_mqtt_topic}/overtemperature"
         # Values that will be read from MQTT
-        self.power = self.NO_DATA_VALUE
-        self.energy = self.NO_DATA_VALUE
+        self.power = self.NO_DATA_VALUE # W
+        self.energy = self.NO_DATA_VALUE #kWh
         self.temperature = self.NO_DATA_VALUE
         self.state_off_on = False
         # To indicate to program that device state should not be checked until next msg received

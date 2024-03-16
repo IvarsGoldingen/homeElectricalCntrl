@@ -21,7 +21,7 @@ class ShellyPlusPmWidget(DeviceWidget):
         input_state_str = "ON" if self.device.di_off_on else "OFF"
         self.lbl_input_state.config(text=f"Input {input_state_str}")
         self.lbl_voltage_current.config(text=f"{self.device.voltage:.1f} V\t{self.device.current:.2f} A")
-        self.lbl_power_energy.config(text=f"{self.device.power_w:.1f} W\t{self.device.energy_kWh:.3f} kWh")
+        self.lbl_power_energy.config(text=f"{self.device.power:.1f} W\t{self.device.energy:.3f} kWh")
         new_text = "OFFLINE"
         if self.device.state_online:
             new_text = "Socket ON" if self.device.state_off_on else "Socket OFF"

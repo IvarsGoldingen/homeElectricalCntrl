@@ -4,8 +4,27 @@ from datetime import datetime, timedelta, timezone
 from devices.deviceTypes import DeviceType
 from helpers.sensor import Sensor
 
+
 def main_fc():
     db_mngr = DbMngr()
+    # insert_same_type_into_table(db_mngr)
+    # db_mngr.insert_new_column("shelly_data", "device_type")
+    # db_mngr.insert_new_column("shelly_data", "voltage")
+    # db_mngr.insert_new_column("shelly_data", "current")
+    # db_mngr.fill_all_rows_w_data_of_column(table="shelly_data", row_name="device_type", value=1)
+    # db_mngr.fill_all_rows_w_data_of_column(table="shelly_data", row_name="voltage", value=-99.99)
+    # db_mngr.fill_all_rows_w_data_of_column(table="shelly_data", row_name="current", value=-99.99)
+    """
+        def insert_shelly_data_w_type(self, name: str, off_on: bool, status: int, power: float = -99.99,
+                                  energy: float = -99.99, voltage: float = -99.99, current: float = -99.99):
+    """
+    db_mngr.insert_shelly_device(dev_type=DeviceType.SHELLY_PLUS.value, name="Relay 1",
+                                 plug_id="shellyplus1-441793ab3fb4", active=True)
+    db_mngr.insert_shelly_device(dev_type=DeviceType.SHELLY_PLUS_PM.value, name="Relay 2",
+                                 plug_id="shellyplus1pm-d48afc417d58", active=True)
+    # db_mngr.insert_shelly_data_w_type(name="sample_device1", off_on = True, status=2)
+    # db_mngr.insert_shelly_data_w_type(name="sample_device2", off_on=True, status=2)
+    # insert_incomplete_shelly_data(db_mngr)
     # db_mngr.fix_id_for_shelly_table()
     # db_mngr.fix_wmin_to_kwh_in_shelly_table()
     # db_mngr.create_all_tables()
@@ -18,6 +37,18 @@ def main_fc():
     # db_mngr.fix_date_time_price_table()
     db_mngr.stop()
 
+
+def insert_same_type_into_table(db_mngr):
+    # get data to be changed
+    db_mngr.cursor.execute(f"SELECT id, device_type FROM shelly_data ORDER BY id")
+    rows = db_mngr.cursor.fetchall()
+    for row in rows:
+        id = row[0]
+        db_mngr.cursor.execute('UPDATE shelly_data SET device_type = ? WHERE id = ?',
+                               (1, id))
+        db_mngr.conn.commit()
+
+
 def insert_sensors(db_mngr):
     db_mngr.create_table_of_sensors()
     db_mngr.create_table_of_sensor_data()
@@ -29,22 +60,23 @@ def insert_sensors(db_mngr):
     db_mngr.insert_sensor(name="ahu_t_supply_air")
     db_mngr.insert_sensor(name="ahu_t_exhaust_air")
 
-def insert_new_device_in_dev_table(db_mngr):
-    # device name must be equal to the name in the program for logging to work properly
-    # db_mngr.insert_device(dev_type=DeviceType.SHELLY_PLUG.value,
-    #                       name="Plug 1",
-    #                       plug_id="shellyplug-s-80646F840029",
-    #                       active=True)
-    db_mngr.insert_device(dev_type=DeviceType.SHELLY_PLUG.value,
-                          name="Plug 2",
-                          plug_id="shellyplug-s-C8C9A3B8E92E",
-                          active=True)
+def insert_incomplete_shelly_data(db_mngr):
+    current_time = datetime.now(timezone.utc)
+    formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
+    date_str = str(current_time.date())
+    # when inserting, get the device ID using the device name
+    db_mngr.cursor.execute('INSERT INTO shelly_data '
+                           '(device_id, record_time, date, off_on, device_status) '
+                           'VALUES ((SELECT device_id FROM devices WHERE name = ?), '
+                           '?, ?, ?, ?)',
+                           ("test_insert", formatted_time, date_str, True, 2))
+    db_mngr.conn.commit()
 
 
 def insert_fake_devices(db_mngr):
-    db_mngr.insert_device(dev_type=DeviceType.FAKE.value, name="sample_device1", plug_id="111", active=True)
-    db_mngr.insert_device(dev_type=DeviceType.FAKE.value, name="sample_device2", plug_id="222", active=True)
-    db_mngr.insert_device(dev_type=DeviceType.FAKE.value, name="sample_device3", plug_id="333", active=True)
+    db_mngr.insert_shelly_device(dev_type=DeviceType.FAKE.value, name="sample_device1", plug_id="111", active=True)
+    db_mngr.insert_shelly_device(dev_type=DeviceType.FAKE.value, name="sample_device2", plug_id="222", active=True)
+    db_mngr.insert_shelly_device(dev_type=DeviceType.FAKE.value, name="sample_device3", plug_id="333", active=True)
 
 
 def insert_fake_prices(db_mngr):
@@ -108,9 +140,6 @@ class DbMngr:
         for row in rows:
             print(row)
 
-
-
-
     def fix_date_time_price_table(self):
         """
         Time in table was saved in GMT+2. Change so it is GMT.
@@ -154,9 +183,10 @@ class DbMngr:
         new_id = start_id
         for i, row in enumerate(rows):
             print(i)
-            id,device_id, device_status,record_time = row
-            self.cursor.execute('UPDATE shelly_data SET id = ? WHERE record_time = ? AND device_id = ? AND device_status = ?',
-                                (new_id,record_time, device_id, device_status))
+            id, device_id, device_status, record_time = row
+            self.cursor.execute(
+                'UPDATE shelly_data SET id = ? WHERE record_time = ? AND device_id = ? AND device_status = ?',
+                (new_id, record_time, device_id, device_status))
             new_id += 1
         print(len(rows))
         self.conn.commit()
@@ -171,7 +201,7 @@ class DbMngr:
         for row in rows:
             id, energy_wh = row
             if energy_wh != -99.99 and energy_wh != 0.0:
-                energy_kwh = energy_wh/60/1000
+                energy_kwh = energy_wh / 60 / 1000
                 self.cursor.execute('UPDATE shelly_data SET energy = ? WHERE id = ?',
                                     (energy_kwh, id))
         self.conn.commit()
@@ -196,6 +226,29 @@ class DbMngr:
                             (name, formatted_time, date_str, off_on, power, status, energy))
         self.conn.commit()
 
+    def insert_shelly_data_w_type(self, name: str, off_on: bool, status: int, power: float = -99.99,
+                                  energy: float = -99.99, voltage: float = -99.99, current: float = -99.99):
+        """
+        :param name: Shelly plug name
+        :param off_on: devices state on or off
+        :param power: current power - received from MQTT
+        :param status: status from the device class
+        :param energy: current energy - received from MQTT
+        :return:
+        """
+        current_time = datetime.now(timezone.utc)
+        formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
+        date_str = str(current_time.date())
+        # when inserting, get the device ID using the device name
+        self.cursor.execute('INSERT INTO shelly_data '
+                            '(device_id, device_type, record_time, date, off_on, power, device_status, energy, '
+                            'voltage, current) '
+                            'VALUES ((SELECT device_id FROM devices WHERE name = ?), '
+                            '(SELECT type FROM devices WHERE name = ?), '
+                            '?, ?, ?, ?, ?, ?, ?, ?)',
+                            (name, name, formatted_time, date_str, off_on, power, status, energy, voltage, current))
+        self.conn.commit()
+
     def insert_sensor_list_data(self, sensor_list: list[Sensor]):
         current_time = datetime.now(timezone.utc)
         formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
@@ -218,7 +271,6 @@ class DbMngr:
                             'VALUES ((SELECT device_id FROM sensors WHERE name = ?), '
                             '?, ?, ?)',
                             (name, formatted_time, date_str, value))
-
 
     def insert_prices(self, prices: dict, date: datetime.date):
         """
@@ -250,7 +302,7 @@ class DbMngr:
         time_difference = local_time - utc_time
         return round(time_difference.total_seconds() / 3600)
 
-    def insert_device(self, dev_type: DeviceType, name: str, plug_id: str = "", active: bool = True):
+    def insert_shelly_device(self, dev_type: DeviceType, name: str, plug_id: str = "", active: bool = True):
         """
         :param dev_type: Type of device
         :param name: Device name - for UI only
@@ -412,6 +464,26 @@ class DbMngr:
         self.cursor.execute(f'ALTER TABLE new_{table_name} RENAME TO {table_name}')
         # Commit the changes to the database
         self.conn.commit()
+
+    def fill_all_rows_w_data_of_column(self, table: str, row_name: str, value):
+        self.cursor.execute(f"SELECT id, {row_name} FROM {table} ORDER BY id")
+        rows = self.cursor.fetchall()
+        for row in rows:
+            id = row[0]
+            self.cursor.execute(f'UPDATE {table} SET {row_name} = ? WHERE id = ?',
+                                (value, id))
+        self.conn.commit()
+
+    """
+    db_mngr.cursor.execute(f"SELECT id, device_type FROM shelly_data ORDER BY id")
+    rows = db_mngr.cursor.fetchall()
+    for row in rows:
+        id = row[0]
+        db_mngr.cursor.execute('UPDATE shelly_data SET device_type = ? WHERE id = ?',
+                               (1, id))
+        db_mngr.conn.commit()
+    """
+
 
     def stop(self):
         self.conn.close()

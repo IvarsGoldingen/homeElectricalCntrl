@@ -53,13 +53,13 @@ def test():
 class ShellyPlusPM(ShellyPlus):
 
     def __init__(self, plug_id: str, mqtt_publish: Callable[[str, str], None],
-                 name: str = "Test shelly plus PM",
+                 name: str = "Shelly plus PM",
                  device_type: DeviceType = DeviceType.SHELLY_PLUS_PM):
         super().__init__(plug_id, mqtt_publish, name, device_type)
-        self.power_w = self.NO_DATA_VALUE
+        self.power = self.NO_DATA_VALUE # W
         self.voltage = self.NO_DATA_VALUE
         self.current = self.NO_DATA_VALUE
-        self.energy_kWh = self.NO_DATA_VALUE
+        self.energy = self.NO_DATA_VALUE #kWh
 
     def process_received_mqtt_data(self, topic: str, data: str):
         """
@@ -79,7 +79,7 @@ class ShellyPlusPM(ShellyPlus):
         clean_data = data.strip("b'")
         if topic == self.output_topic:
             relevant_msg_received = True
-            self.state_off_on, self.temperature, self.power_w, self.voltage, self.current, self.energy_kWh = (
+            self.state_off_on, self.temperature, self.power, self.voltage, self.current, self.energy = (
                 self.handle_output_json(clean_data))
             self.device_notify(self.event_name_new_extra_data, self.name, self.device_type)
             self.cmd_sent_out = False
@@ -117,10 +117,10 @@ class ShellyPlusPM(ShellyPlus):
             power = data_dict["apower"]
             voltage = data_dict["voltage"]
             current = data_dict["current"]
-            energy_Wh = data_dict["aenergy"]["total"] / 1000.0
+            energy = data_dict["aenergy"]["total"] / 1000.0
             t = data_dict["temperature"]["tC"]
             logger.debug(f"Temperature is {t} output is {output_on_off}")
-            return output_on_off, t, power, voltage, current, energy_Wh
+            return output_on_off, t, power, voltage, current, energy
         except json.decoder.JSONDecodeError:
             logger.error(f"Failed to parce output json data: {data}")
         except Exception as e:
@@ -129,8 +129,8 @@ class ShellyPlusPM(ShellyPlus):
 
     def __str__(self):
         return (f"Name: {self.name} Online: {self.state_online} Output: {self.state_off_on} Input: {self.di_off_on} "
-                f"Temperature: {self.temperature} Power: {self.power_w} Voltage: {self.voltage} Current: {self.current} "
-                f"Energy: {self.energy_kWh}")
+                f"Temperature: {self.temperature} Power: {self.power} Voltage: {self.voltage} Current: {self.current} "
+                f"Energy: {self.energy}")
 
 if __name__ == '__main__':
     test()

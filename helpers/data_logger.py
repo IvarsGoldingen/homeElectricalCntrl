@@ -14,6 +14,7 @@ from devices.shellyPlugMqtt import ShellyPlug
 from devices.deviceTypes import DeviceType
 from helpers.sensor import Sensor
 from helpers.database_mngr import DbMngr
+from devices.mqttDevice import MqttDevice
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -108,7 +109,9 @@ class DataLogger(Observer):
 
     def log_device_data(self, dev: Device):
         device_type = dev.device_type
-        if device_type == DeviceType.SHELLY_PLUG:
+        if device_type == DeviceType.SHELLY_PLUG or \
+                device_type == DeviceType.SHELLY_PLUS or \
+                device_type == DeviceType.SHELLY_PLUS_PM:
             self.data_queue.put({"log_type": self.LogType.SHELLY_LOG, "data": dev})
         else:
             logger.error(f"Device type not recognised {device_type}")
@@ -166,9 +169,20 @@ class DataLogger(Observer):
         # close db manager
         self.db_mngr.stop()
 
-    def log_shelly_data(self, dev: ShellyPlug):
-        self.db_mngr.insert_shelly_data(dev.name, dev.state_off_on, dev.power,
-                                        dev.get_status(), dev.energy)
+    def log_shelly_data(self, dev: Device):
+        # Different shellt devices have different data available, but all data stored in single table. Fill missing data
+        # with fake value
+        if dev.device_type == DeviceType.SHELLY_PLUG:
+            self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
+                                            dev.get_status(), dev.power, dev.energy,)
+        elif dev.device_type == DeviceType.SHELLY_PLUS:
+            self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
+                                            dev.get_status())
+        elif dev.device_type == DeviceType.SHELLY_PLUS_PM:
+            self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
+                                            dev.get_status(), dev.power, dev.energy,
+                                            dev.voltage, dev.current)
+
 
 
 if __name__ == '__main__':
