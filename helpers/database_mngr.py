@@ -14,14 +14,10 @@ def main_fc():
     # db_mngr.fill_all_rows_w_data_of_column(table="shelly_data", row_name="device_type", value=1)
     # db_mngr.fill_all_rows_w_data_of_column(table="shelly_data", row_name="voltage", value=-99.99)
     # db_mngr.fill_all_rows_w_data_of_column(table="shelly_data", row_name="current", value=-99.99)
-    """
-        def insert_shelly_data_w_type(self, name: str, off_on: bool, status: int, power: float = -99.99,
-                                  energy: float = -99.99, voltage: float = -99.99, current: float = -99.99):
-    """
-    db_mngr.insert_shelly_device(dev_type=DeviceType.SHELLY_PLUS.value, name="Relay 1",
-                                 plug_id="shellyplus1-441793ab3fb4", active=True)
-    db_mngr.insert_shelly_device(dev_type=DeviceType.SHELLY_PLUS_PM.value, name="Relay 2",
-                                 plug_id="shellyplus1pm-d48afc417d58", active=True)
+    # db_mngr.insert_shelly_device(dev_type=DeviceType.SHELLY_PLUS.value, name="Relay 1",
+    #                              plug_id="shellyplus1-441793ab3fb4", active=True)
+    # db_mngr.insert_shelly_device(dev_type=DeviceType.SHELLY_PLUS_PM.value, name="Relay 2",
+    #                              plug_id="shellyplus1pm-d48afc417d58", active=True)
     # db_mngr.insert_shelly_data_w_type(name="sample_device1", off_on = True, status=2)
     # db_mngr.insert_shelly_data_w_type(name="sample_device2", off_on=True, status=2)
     # insert_incomplete_shelly_data(db_mngr)
@@ -59,19 +55,6 @@ def insert_sensors(db_mngr):
     db_mngr.insert_sensor(name="ahu_t_outdoor_air")
     db_mngr.insert_sensor(name="ahu_t_supply_air")
     db_mngr.insert_sensor(name="ahu_t_exhaust_air")
-
-def insert_incomplete_shelly_data(db_mngr):
-    current_time = datetime.now(timezone.utc)
-    formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
-    date_str = str(current_time.date())
-    # when inserting, get the device ID using the device name
-    db_mngr.cursor.execute('INSERT INTO shelly_data '
-                           '(device_id, record_time, date, off_on, device_status) '
-                           'VALUES ((SELECT device_id FROM devices WHERE name = ?), '
-                           '?, ?, ?, ?)',
-                           ("test_insert", formatted_time, date_str, True, 2))
-    db_mngr.conn.commit()
-
 
 def insert_fake_devices(db_mngr):
     db_mngr.insert_shelly_device(dev_type=DeviceType.FAKE.value, name="sample_device1", plug_id="111", active=True)
