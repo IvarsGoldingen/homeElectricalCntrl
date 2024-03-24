@@ -15,7 +15,7 @@ stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 
 # File logger
-file_handler = logging.FileHandler(os.path.join("../logs", "script_file_manager.log"))
+file_handler = logging.FileHandler(os.path.join("/logs", "script_file_manager.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)

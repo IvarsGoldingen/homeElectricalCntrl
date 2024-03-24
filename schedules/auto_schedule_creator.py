@@ -14,7 +14,7 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 # File logger
-file_handler = logging.FileHandler(os.path.join("logs", "auto_schedule_creator.log"))
+file_handler = logging.FileHandler(os.path.join("/logs", "auto_schedule_creator.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)

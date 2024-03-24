@@ -24,7 +24,7 @@ stream_handler.setFormatter(log_formatter)
 stream_handler.setLevel(logging.INFO)
 logger.addHandler(stream_handler)
 # File logger
-file_handler = logging.FileHandler(os.path.join("logs", "shelly_plus_log.log"))
+file_handler = logging.FileHandler(os.path.join("/logs", "shelly_plus_log.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
