@@ -1,0 +1,25 @@
+Notes for running the program.
+
+Latest selenium might need installation to have the driver be installed automatically.
+
+create folder:
+C:\py_related\home_el_cntrl
+and subfolders:
+db
+price_lists
+state
+
+Mosquitto MQTT broker
+Download and install
+Configure
+C:\Program Files\mosquitto\mosquitto.conf
+example at top of file:
+allow_anonymous false
+listener 1883
+password_file C:\mqtt\password_file.psw
+
+Add users to psw file:
+cd C:\Program Files\mosquitto
+mosquitto_passwd -b C:\mqtt\password_file.psw user password
+
+Create DB using methods from DB_helper.py file
