@@ -17,9 +17,14 @@ example at top of file:
 allow_anonymous false
 listener 1883
 password_file C:\mqtt\password_file.psw
-
-Add users to psw file:
+Create the passwords file and add users to psw file:
 cd C:\Program Files\mosquitto
+Create and add
 mosquitto_passwd -b C:\mqtt\password_file.psw user password
+Add to existing file
+mosquitto_passwd -b C:\mqtt\password_file.psw user password
+The password file, has to be given access by SYSTEM. Right click the created file\security.
 
-Create DB using methods from DB_helper.py file
+Create DB using methods from helpers\database_mngr file
+create_all_tables()
+Then insert devices and sensors that will be logged also using examples and methods from that file

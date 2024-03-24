@@ -7,6 +7,14 @@ from helpers.sensor import Sensor
 
 def main_fc():
     db_mngr = DbMngr()
+    """
+    CREATE TABLES AND THEN DEVICES AND SENSORS THAT ARE TO BE LOGGED
+    db_mngr.create_all_tables()
+    db_mngr.insert_shelly_device(dev_type=DeviceType.SHELLY_PLUG.value, name="Rozete",
+                                 plug_id="add_later", active=True)
+    db_mngr.insert_shelly_device(dev_type=DeviceType.SHELLY_PLUS_PM.value, name="Boileris",
+                                 plug_id="shellyplus1pm-d48afc417d58", active=True)
+    """
     # insert_same_type_into_table(db_mngr)
     # db_mngr.insert_new_column("shelly_data", "device_type")
     # db_mngr.insert_new_column("shelly_data", "voltage")
@@ -23,7 +31,7 @@ def main_fc():
     # insert_incomplete_shelly_data(db_mngr)
     # db_mngr.fix_id_for_shelly_table()
     # db_mngr.fix_wmin_to_kwh_in_shelly_table()
-    # db_mngr.create_all_tables()
+    #
     # insert_new_device_in_dev_table(db_mngr)
     # insert_fake_devices(db_mngr)
     # insert_fake_prices(db_mngr)
@@ -382,6 +390,9 @@ class DbMngr:
                               power FLOAT,
                               device_status INTEGER,
                               energy FLOAT,
+                              device_type INTEGER,
+                              voltage FLOAT,
+                              current FLOAT,
                               FOREIGN KEY(device_id) REFERENCES devices(device_id)
                            )''')
         # Device id and date will be used to get data from the table so create index
