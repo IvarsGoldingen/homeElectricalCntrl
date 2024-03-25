@@ -151,9 +151,9 @@ class DbMngr:
                                 (new_date_str, new_hour, id))
         self.conn.commit()
 
-    def insert_new_column(self, table_name, row_name):
+    def insert_new_column(self, table_name, row_name, var_type: str = "FLOAT"):
         # record_time_new
-        self.cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {row_name} TEXT")
+        self.cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {row_name} {var_type}")
         self.conn.commit()
 
     def create_all_tables(self):

@@ -1,0 +1,2 @@
+Import JSON into GRAFANA as dashboard to display graphs.
+SQLite datasource has to be added manually.

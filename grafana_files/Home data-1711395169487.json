@@ -1,0 +1,1268 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_SQLITE",
+      "label": "SQLite",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "frser-sqlite-datasource",
+      "pluginName": "SQLite"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "datasource",
+      "id": "frser-sqlite-datasource",
+      "name": "SQLite",
+      "version": "3.3.2"
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.2.2"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${DS_SQLITE}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "right",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "kwatth"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "off_on"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.axisColorMode",
+                "value": "series"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepBefore"
+              },
+              {
+                "id": "unit",
+                "value": "bool_on_off"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "power"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepBefore"
+              },
+              {
+                "id": "custom.axisColorMode",
+                "value": "series"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "energy"
+            },
+            "properties": [
+              {
+                "id": "custom.axisColorMode",
+                "value": "series"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "queryText": "WITH converted AS (\n   SELECT off_on,device_id, power, energy, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM shelly_data WHERE device_id = 1\n)\nSELECT datetime, off_on, power, energy \nFROM converted\nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT off_on,device_id, power, energy, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM shelly_data WHERE device_id = 1\n)\nSELECT datetime, off_on, power, energy \nFROM converted\nORDER BY datetime ASC",
+          "refId": "A",
+          "timeColumns": [
+            "datetime"
+          ]
+        }
+      ],
+      "title": "Plug 1",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${DS_SQLITE}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "kwatth"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "off_on"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.axisColorMode",
+                "value": "series"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepBefore"
+              },
+              {
+                "id": "unit",
+                "value": "bool_on_off"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "power"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepBefore"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "timezone": [
+          "browser"
+        ],
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "queryText": "WITH converted AS (\n   SELECT off_on,device_id, power, energy, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM shelly_data WHERE device_id = 2\n)\nSELECT datetime, off_on, power, energy \nFROM converted \nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT off_on,device_id, power, energy, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM shelly_data WHERE device_id = 2\n)\nSELECT datetime, off_on, power, energy \nFROM converted \nORDER BY datetime ASC",
+          "refId": "A",
+          "timeColumns": [
+            "datetime"
+          ]
+        }
+      ],
+      "title": "Plug 2",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${DS_SQLITE}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "kwatth"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "off_on"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.axisColorMode",
+                "value": "series"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepBefore"
+              },
+              {
+                "id": "unit",
+                "value": "bool_on_off"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "power"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepBefore"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "voltage"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "volt"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "linear"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "current"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "amp"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "linear"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "timezone": [
+          "browser"
+        ],
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "queryText": "WITH converted AS (\n   SELECT voltage, current, off_on,device_id, power, energy, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM shelly_data WHERE device_id = 4\n)\nSELECT datetime, off_on, power, energy, voltage, current\nFROM converted \nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT voltage, current, off_on,device_id, power, energy, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM shelly_data WHERE device_id = 4\n)\nSELECT datetime, off_on, power, energy, voltage, current\nFROM converted \nORDER BY datetime ASC",
+          "refId": "A",
+          "timeColumns": [
+            "datetime"
+          ]
+        }
+      ],
+      "title": "Relay 1 SHELLY PLUS 1 PM",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${DS_SQLITE}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "right",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "%"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "supply"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "smooth"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "indoor"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "smooth"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "outdoor"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "smooth"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "exhaust"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "smooth"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "queryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS supply\nFROM converted \nWHERE device_id IN (6)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS supply\nFROM converted \nWHERE device_id IN (6)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "refId": "A",
+          "timeColumns": [
+            "datetime"
+          ]
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "hide": false,
+          "queryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS indoor\nFROM converted \nWHERE device_id IN (4)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS indoor\nFROM converted \nWHERE device_id IN (4)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "refId": "B",
+          "timeColumns": [
+            "datetime"
+          ]
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "hide": false,
+          "queryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS outdoor\nFROM converted \nWHERE device_id IN (5)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS outdoor\nFROM converted \nWHERE device_id IN (5)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "refId": "C",
+          "timeColumns": [
+            "datetime"
+          ]
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "hide": false,
+          "queryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS exhaust\nFROM converted \nWHERE device_id IN (7)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS exhaust\nFROM converted \nWHERE device_id IN (7)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "refId": "D",
+          "timeColumns": [
+            "datetime"
+          ]
+        }
+      ],
+      "title": "Temperatures AHU",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${DS_SQLITE}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "timezone": [
+          "browser"
+        ],
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "queryText": "WITH converted AS (\r\n   SELECT price,  date || 'T' || printf('%02d', hour) || ':00:00Z' AS datetime \r\n   FROM prices \r\n   --WHERE date >= date('now', '-2 days')\r\n)\r\nSELECT datetime, price FROM converted ORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\r\n   SELECT price,  date || 'T' || printf('%02d', hour) || ':00:00Z' AS datetime \r\n   FROM prices \r\n   --WHERE date >= date('now', '-2 days')\r\n)\r\nSELECT datetime, price FROM converted ORDER BY datetime ASC",
+          "refId": "A",
+          "timeColumns": [
+            "datetime"
+          ]
+        }
+      ],
+      "title": "Prices",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${DS_SQLITE}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "yellow",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 19,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "EUR/MWh"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "off_on"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bool_on_off"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepAfter"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "solid"
+                }
+              },
+              {
+                "id": "custom.spanNulls",
+                "value": true
+              },
+              {
+                "id": "custom.axisColorMode",
+                "value": "series"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "power"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.axisColorMode",
+                "value": "series"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepAfter"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "timezone": [
+          "browser"
+        ],
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "hide": false,
+          "queryText": "WITH converted AS (\n   SELECT off_on,power, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM shelly_data WHERE device_id = 1\n)\nSELECT off_on, power, datetime\nFROM converted \nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT off_on,power, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM shelly_data WHERE device_id = 1\n)\nSELECT off_on, power, datetime\nFROM converted \nORDER BY datetime ASC",
+          "refId": "B",
+          "timeColumns": [
+            "datetime"
+          ]
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "hide": false,
+          "queryText": "WITH converted AS (\r\n   SELECT price,  date || 'T' || printf('%02d', hour) || ':00:00Z' AS datetime \r\n   FROM prices \r\n   --WHERE date >= date('now', '-2 days')\r\n)\r\nSELECT datetime, price FROM converted ORDER BY datetime ASC",
+          "queryType": "time series",
+          "rawQueryText": "WITH converted AS (\r\n   SELECT price,  date || 'T' || printf('%02d', hour) || ':00:00Z' AS datetime \r\n   FROM prices \r\n   --WHERE date >= date('now', '-2 days')\r\n)\r\nSELECT datetime, price FROM converted ORDER BY datetime ASC",
+          "refId": "A",
+          "timeColumns": [
+            "datetime"
+          ]
+        }
+      ],
+      "title": "Prices w relay 2",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${DS_SQLITE}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "right",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "%"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "speed"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "%"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "smooth"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "humidity"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "%"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "smooth"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "co2"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "unit",
+                "value": "ppm"
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "smooth"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "queryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS speed\nFROM converted \nWHERE device_id IN (1)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS speed\nFROM converted \nWHERE device_id IN (1)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "refId": "A",
+          "timeColumns": [
+            "datetime"
+          ]
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "hide": false,
+          "queryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS humidity\nFROM converted \nWHERE device_id IN (2)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS humidity\nFROM converted \nWHERE device_id IN (2)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "refId": "B",
+          "timeColumns": [
+            "datetime"
+          ]
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${DS_SQLITE}"
+          },
+          "hide": false,
+          "queryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS co2\nFROM converted \nWHERE device_id IN (3)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "queryType": "table",
+          "rawQueryText": "WITH converted AS (\n   SELECT value, device_id, strftime('%Y-%m-%dT%H:%M:%SZ', record_time) AS datetime\n   FROM sensor_data \n)\nSELECT datetime, value AS co2\nFROM converted \nWHERE device_id IN (3)\nGROUP BY datetime, device_id\nORDER BY datetime ASC",
+          "refId": "C",
+          "timeColumns": [
+            "datetime"
+          ]
+        }
+      ],
+      "title": "Air quality",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 38,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "2024-03-22T22:00:00.000Z",
+    "to": "2024-03-25T18:31:08.943Z"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Home data",
+  "uid": "cff94eae-ff8c-4148-82d2-1dbd57c43af7",
+  "version": 33,
+  "weekStart": ""
+}
