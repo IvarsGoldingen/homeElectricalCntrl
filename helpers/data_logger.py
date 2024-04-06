@@ -19,14 +19,14 @@ from devices.mqttDevice import MqttDevice
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(logging.DEBUG)
+stream_handler.setLevel(logging.INFO)
 logger.addHandler(stream_handler)
 # File logger
-file_handler = logging.FileHandler(os.path.join("/logs", "data_logger.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "data_logger.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
@@ -170,19 +170,18 @@ class DataLogger(Observer):
         self.db_mngr.stop()
 
     def log_shelly_data(self, dev: Device):
-        # Different shellt devices have different data available, but all data stored in single table. Fill missing data
+        # Different shelly devices have different data available, but all data stored in single table. Fill missing data
         # with fake value
         if dev.device_type == DeviceType.SHELLY_PLUG:
             self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
-                                            dev.get_status(), dev.power, dev.energy,)
+                                                   dev.get_status(), dev.power, dev.energy, )
         elif dev.device_type == DeviceType.SHELLY_PLUS:
             self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
-                                            dev.get_status())
+                                                   dev.get_status())
         elif dev.device_type == DeviceType.SHELLY_PLUS_PM:
             self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
-                                            dev.get_status(), dev.power, dev.energy,
-                                            dev.voltage, dev.current)
-
+                                                   dev.get_status(), dev.power, dev.energy,
+                                                   dev.voltage, dev.current)
 
 
 if __name__ == '__main__':

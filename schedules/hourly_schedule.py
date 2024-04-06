@@ -10,16 +10,16 @@ from helpers.state_saver import StateSaver
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 
 # File logger
-file_handler = logging.FileHandler(os.path.join("/logs", "hourly_schedule.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "hourly_schedule.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 
@@ -84,9 +84,9 @@ class HourlySchedule2days(Subject, StateSaver):
             self.schedule_today = {int(key): value for key, value in schedule_today_temp.items()}
             schedule_tomorrow_temp = loaded_state["schedule_tomorrow"]
             self.schedule_tomorrow = {int(key): value for key, value in schedule_tomorrow_temp.items()}
-            logger.debug(f"State retrieved successfully for {self.name}")
-            logger.debug(f"Schedule today {self.schedule_today}")
-            logger.debug(f"Schedule today {self.schedule_tomorrow}")
+            logger.info(f"State retrieved successfully for {self.name}")
+            logger.info(f"Schedule today {self.schedule_today}")
+            logger.info(f"Schedule tomorrow {self.schedule_tomorrow}")
         except KeyError as e:
             logger.error(f"KeyError while loading state object {self.name}: {e}")
         except Exception as e:
@@ -153,8 +153,10 @@ class HourlySchedule2days(Subject, StateSaver):
             logger.error("Invalid schedule set")
             return
         if not today_tomorrow:
+            logger.debug(f"Current day schedule change")
             self.schedule_today.update(schedule)
         else:
+            logger.debug(f"Next day schedule change")
             self.schedule_tomorrow.update(schedule)
         self.save_state()
         self.notify_observers(self.event_name_schedule_change)

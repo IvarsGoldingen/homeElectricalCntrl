@@ -13,7 +13,7 @@ stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 
 # File logger
-file_handler = logging.FileHandler(os.path.join("/logs", "device.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "device.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)

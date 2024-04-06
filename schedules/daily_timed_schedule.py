@@ -10,23 +10,23 @@ from helpers.state_saver import StateSaver
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 
 # File logger
-file_handler = logging.FileHandler(os.path.join("/logs", "daily_timed_schedule.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "daily_timed_schedule.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 
 def test():
     sch = DailyTimedSchedule(name="Test schedule",
-                             hour_on=17,
-                             minute_on=30,
+                             hour_on=20,
+                             minute_on=47,
                              on_time_min=1)
     sch.enable_schedule()
     try:
@@ -124,7 +124,7 @@ class DailyTimedSchedule(Subject, StateSaver):
         """
         Start the schedule
         """
-        logger.debug(f"Enabling schedule {self._hour_on:02}:{self._minute_on:02}")
+        logger.info(f"Enabling schedule {self._hour_on:02}:{self._minute_on:02}")
         self.schedule_base.clear()
         self.schedule_base.every().day.at(f"{self._hour_on:02}:{self._minute_on:02}").do(self.turn_devices_on)
         self._schedule_enabled = True
@@ -132,7 +132,7 @@ class DailyTimedSchedule(Subject, StateSaver):
         self.save_state()
 
     def disable_schedule(self):
-        logger.debug("Disabling schedule")
+        logger.info("Disabling schedule")
         self._schedule_enabled = False
         self.schedule_base.clear()
         self.notify_observers(self.event_name_schedule_change)
@@ -159,13 +159,13 @@ class DailyTimedSchedule(Subject, StateSaver):
 
     def turn_devices_on(self):
         # Turn on devices from schedule
-        logger.debug("Turning on")
+        logger.info("Turning on")
         self.time_when_dev_was_turned_on_s = time.perf_counter()
         self._command = True
         self.write_cmd_to_devices()
         self.notify_observers(self.event_name_schedule_change)
         if not self.repeat_daily:
-            logger.debug("Daily repeat is off, disabling schedule")
+            logger.info("Daily repeat is off, disabling schedule")
             self.disable_schedule()
 
     def check_if_time_to_turn_off(self):
@@ -189,13 +189,13 @@ class DailyTimedSchedule(Subject, StateSaver):
             dev.set_auto_run(self._command)
 
     def turn_devices_off(self):
-        logger.debug("Turning off")
+        logger.info("Turning off")
         self._command = False
         self.write_cmd_to_devices()
         self.notify_observers(self.event_name_schedule_change)
 
     def toggle_command(self):
-        logger.debug("Toggling command")
+        logger.info("Toggling command")
         self.turn_devices_off() if self._command else self.turn_devices_on()
 
 

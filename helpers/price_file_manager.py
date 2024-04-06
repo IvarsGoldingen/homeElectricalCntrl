@@ -8,16 +8,16 @@ from helpers.observer_pattern import Subject
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 
 # File logger
-file_handler = logging.FileHandler(os.path.join("/logs", "script_file_manager.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "script_file_manager.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 
@@ -89,9 +89,6 @@ class PriceFileManager(Subject):
             # Tomorrows prices can not be available since new day just now
             # Check if datetime_now is not None, that would mean first cycle
             self.tomorrow_prices_available = False
-
-        else:
-            logger.debug("First cycle")
         # new day
         self.delete_old_incorrect_price_files()
         self.datetime_now = actual_today
@@ -105,7 +102,7 @@ class PriceFileManager(Subject):
         # For today just try to read the file, if it does not exist there will be an empty dict
         date_today = datetime.date.today()
         prices_today = self.read_prices_file_into_dict(self.create_date_file_path(date_today))
-        logger.debug(f"get_prices_today_tomorrow")
+        logger.debug(f"Getting prices:")
         logger.debug(f"Prices today {prices_today}")
         # For tomorrow it is possible to check if nordpool has the prices if there is no file yet or if the file has too
         # few values
@@ -131,7 +128,7 @@ class PriceFileManager(Subject):
             self.notify_observers(self.event_name_prices_changed)
             return
         if self.get_prices_tomorrow_from_np():
-            logger.debug("Got prices from Nordpool")
+            logger.info("Got prices from Nordpool")
             self.notify_observers(self.event_name_prices_changed)
             self.notify_observers(self.event_name_new_prices)
             return

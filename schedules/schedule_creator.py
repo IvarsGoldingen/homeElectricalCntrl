@@ -7,16 +7,16 @@ import time
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 
 # File logger
-file_handler = logging.FileHandler(os.path.join("/logs", "schedule_creator.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "schedule_creator.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 
@@ -114,7 +114,7 @@ class ScheduleCreator:
         start_hour, future_prices_list = ScheduleCreator.get_list_of_upcoming_prices(prices_today, prices_tomorrow,
                                                                                      hours_ahead_to_calculate)
         # Split hours ahead in periods and calculate best hours to run for each period
-        nr_of_periods = hours_ahead_to_calculate // period_h
+        nr_of_periods = min(hours_ahead_to_calculate, len(future_prices_list)) // period_h
         run_list = []
         for x in range(nr_of_periods):
             future_prices_to_use = future_prices_list[(period_h * x):(period_h * x + period_h)]
@@ -123,6 +123,10 @@ class ScheduleCreator:
                                                                       future_prices_to_use)
             run_list.extend(temp_list)
         schedule_today, schedule_tomorrow = ScheduleCreator.create_schedule_dicts_from_run_list(run_list, start_hour)
+        logger.info(f"Prices today {prices_today}")
+        logger.info(f"Schedule today {schedule_today}")
+        logger.info(f"Prices tomorrow {prices_tomorrow}")
+        logger.info(f"Schedule tomorrow {schedule_tomorrow}")
         return schedule_today, schedule_tomorrow
 
     @staticmethod
@@ -177,7 +181,7 @@ class ScheduleCreator:
         hours_ahead_to_calculate = len(upcoming_prices)
         # How many on hours to consider
         nr_of_on_hours = min(max_hours_to_run, hours_ahead_to_calculate)
-        logger.debug(f"Finding lowes price combo for prices: {upcoming_prices}")
+        logger.debug(f"Finding lowest price combo for prices: {upcoming_prices}")
         # Get the indicies and values for the cheapest prices in the list
         indices, values = ScheduleCreator.find_n_smallest_items_in_list(upcoming_prices, nr_of_on_hours)
         while nr_of_on_hours > 0:
@@ -234,9 +238,9 @@ class ScheduleCreator:
         next_hour = datetime.datetime.now().hour + 1
         logger.debug(f"Schedule start hour is {next_hour}")
         # How many prices for each hour from today's dictionary
-        hours_from_today = min(hours_ahead_to_calculate, 24 - next_hour)
+        hours_from_today = min(hours_ahead_to_calculate, 24 - next_hour, len(prices_today))
         # How many prices for each hour from tomorrow's dictionary
-        hours_from_tomorrow = min(hours_ahead_to_calculate - hours_from_today, 24)
+        hours_from_tomorrow = min(hours_ahead_to_calculate - hours_from_today, 24, len(prices_tomorrow))
         # list of future prices from today
         today_hours = [prices_today[next_hour + i] for i in range(hours_from_today)]
         # list of future prices from tomorrow

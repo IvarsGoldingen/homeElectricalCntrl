@@ -22,7 +22,7 @@ stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 
 # File logger
-file_handler = logging.FileHandler(os.path.join("/logs", "device.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "device.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
@@ -89,6 +89,7 @@ class Device(DeviceSubject, StateSaver):
             logger.error(f"KeyError while loading state object {self.name}: {e}")
         except Exception as e:
             logger.error(f"Failed to load state object {self.name}. Error: {e}")
+            logger.error(f"{loaded_state}")
 
     def set_mode(self, auto_man):
         if auto_man != self.auto_man:

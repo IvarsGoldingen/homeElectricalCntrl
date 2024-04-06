@@ -8,15 +8,15 @@ from typing import Callable, Dict, Tuple
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 # File logger
-file_handler = logging.FileHandler(os.path.join("/logs", "auto_schedule_creator.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "auto_schedule_creator.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 
@@ -68,6 +68,8 @@ class AutoScheduleCreator:
         # Call periodically to execute auto schedule creation
         if self._auto_create_enabled:
             schedule.run_pending()
+        else:
+            logger.debug("Auto create disabled")
 
     def set_parameters(self,
                        period_split_h: int = 8,
@@ -82,6 +84,8 @@ class AutoScheduleCreator:
         self._min_hours_to_run = min_hours_to_run
         self._calculation_time_h = calculation_time_h
         self._calculation_time_min = calculation_time_min
+        if self._auto_create_enabled:
+            self.set_up_scheduling()
 
     def get_schedule_name(self):
         return self._hourly_schedule.name

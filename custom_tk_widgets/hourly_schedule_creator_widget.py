@@ -14,7 +14,7 @@ stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
 
 # File logger
-file_handler = logging.FileHandler(os.path.join("/logs", "hourly_schedule_widget.log"))
+file_handler = logging.FileHandler(os.path.join("../logs", "hourly_schedule_widget.log"))
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
