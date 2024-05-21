@@ -31,6 +31,7 @@ from custom_tk_widgets.ahu_widget import AhuWidget
 from helpers.observer_pattern import Observer
 from helpers.data_logger import DataLogger
 import secrets
+import settings
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -102,9 +103,10 @@ class MainUIClass(Tk, Observer):
             logger.info("KeyboardInterrupt")
 
     def setup_db_logger(self):
-        ahu_sensors = self.ahu.get_sensor_list()
         all_sensors = []
-        all_sensors.extend(ahu_sensors)
+        if settings.AHU_ENABLED:
+            ahu_sensors = self.ahu.get_sensor_list()
+            all_sensors.extend(ahu_sensors)
         self.db_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                     device_list=self.dev_list, sensor_list=all_sensors,
                                     periodical_log_interval_s=600)
@@ -141,7 +143,8 @@ class MainUIClass(Tk, Observer):
         # Execute this same function in regular intervals
         for dev in self.dev_list:
             dev.loop()
-        self.ahu.loop()
+        if settings.AHU_ENABLED:
+            self.ahu.loop()
         self.device_thread = Timer(self.LOOP_DEVICES_INTERVAL_S, self.device_threaded_loop)
         self.device_thread.start()
 
@@ -200,7 +203,8 @@ class MainUIClass(Tk, Observer):
                 # if device is an MQTT device, register the topic that should be subscribed to and a callback
                 # for receiving messages from that topic
                 self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)
-        self.ahu = ValloxAhu(ip="http://192.168.94.117/")
+        if settings.AHU_ENABLED:
+            self.ahu = ValloxAhu(ip="http://192.168.94.117/")
 
     def set_up_ui(self):
         # Set up user interface
@@ -253,9 +257,10 @@ class MainUIClass(Tk, Observer):
                 self.dev_widgets.append(shelly_plus_pm_widget)
             else:
                 logger.warning("Device list contains device without widget associated to its type")
-        # Ahu widget
-        self.ahu_widget = AhuWidget(parent=self.frame_devices, ahu=self.ahu)
-        self.ahu.register(self.ahu_widget, ValloxAhu.event_name_new_data)
+        if settings.AHU_ENABLED:
+            # Ahu widget
+            self.ahu_widget = AhuWidget(parent=self.frame_devices, ahu=self.ahu)
+            self.ahu.register(self.ahu_widget, ValloxAhu.event_name_new_data)
         # Create schedule widgets and register them as listeners for desired schedules
         self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
@@ -288,7 +293,8 @@ class MainUIClass(Tk, Observer):
         for i, widget in enumerate(self.dev_widgets):
             widget.grid(row=0, column=i)
             last_socket_widget += 1
-        self.ahu_widget.grid(row=0, column=last_socket_widget)
+        if settings.AHU_ENABLED:
+            self.ahu_widget.grid(row=0, column=last_socket_widget)
         self.schedule_widget.grid(row=3, column=0)
         self.frame_widgets_bottom.grid(row=4, column=0)
         self.auto_schedule_creator_widget.grid(row=0, column=0)
@@ -313,8 +319,9 @@ class MainUIClass(Tk, Observer):
         self.db_logger.stop()
         # Stpo MQTT client
         self.mqtt_client.stop()
-        # Stop AHU data read
-        self.ahu.stop()
+        if settings.AHU_ENABLED:
+            # Stop AHU data read
+            self.ahu.stop()
         # Close tkinter UI
         if hasattr(self, 'winfo_exists') and self.winfo_exists():
             self.destroy()

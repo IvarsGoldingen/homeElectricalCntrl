@@ -72,7 +72,7 @@ class DailyTimedSchedule(Subject, StateSaver):
         self.load_state()
         # Base schedule
         self.schedule_base = schedule.Scheduler()
-        self.set_settings(hour_on, minute_on, on_time_min)
+        self.set_settings(self._hour_on, self._minute_on, self._on_time_min)
         # Devices that are controlled by this schedule
         self.device_list: Optional[List[Device]] = []
         self.time_when_dev_was_turned_on_s = 0
