@@ -134,7 +134,7 @@ class ValloxAhu(Subject):
         """
         Has to be called periodically
         """
-        self.handle_msgs_from_mqtt_client()
+        self.handle_msgs_from_ahu_web()
         self.auto_req_data()
 
     def auto_req_data(self):
@@ -153,7 +153,7 @@ class ValloxAhu(Subject):
         self.ahu_web_thread.join()
         logger.debug("After join")
 
-    def handle_msgs_from_mqtt_client(self):
+    def handle_msgs_from_ahu_web(self):
         while not self.queue_from_webscrapping_thread.empty():
             logger.debug("New values received")
             sensor_values_dic = self.queue_from_webscrapping_thread.get()
@@ -258,7 +258,7 @@ class ValloxAhu(Subject):
                 return False
             logger.debug("Opened, delaying until dashboard controls found")
             # Sleep because AHU hangs up - possibly because instant polling
-            time.sleep(2.0)
+            time.sleep(4.0)
             try:
                 # Increased poll frequency because ahu sometimes hangs up
                 WebDriverWait(self.driver, timeout=30, poll_frequency=10).until(EC.presence_of_element_located(

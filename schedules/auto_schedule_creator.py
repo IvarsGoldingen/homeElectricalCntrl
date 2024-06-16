@@ -4,6 +4,7 @@ import os
 from schedules.hourly_schedule import HourlySchedule2days
 from schedules.schedule_creator import ScheduleCreator
 from typing import Callable, Dict, Tuple
+from helpers.state_saver import StateSaver
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -34,10 +35,11 @@ def test():
     test.set_scheduled_times()
 
 
-class AutoScheduleCreator:
+class AutoScheduleCreator(StateSaver):
     """
     Class for repeatedly creating schedules to turn devices on or off for the upcoming hours
     """
+
     # Auto schedule create periods allowed in hours
     ALLOWED_PERIODS = [6, 8, 12, 24]
     # At what minute is the schedule created - 23:55, 15:55 ... for 8 hour period
@@ -51,9 +53,13 @@ class AutoScheduleCreator:
                  max_hours_to_run: int = 5,
                  min_hours_to_run: int = 2,
                  calculation_time_h: int = 16,
-                 calculation_time_min: int = 50):
+                 calculation_time_min: int = 50,
+                 name: str = "Auto schedule creator",
+                 state_file_loc: str = "C:\\py_related\\home_el_cntrl\\state"):
+        self.state_file_loc = state_file_loc
+        self.name = name
         self._get_prices_method = get_prices_method
-        self._auto_create_enabled = False
+        self._auto_create_enabled = True
         self._auto_create_period = 24
         self._hourly_schedule = hourly_schedule
         self._max_total_cost = max_total_cost
@@ -62,7 +68,10 @@ class AutoScheduleCreator:
         self._calculation_time_h = calculation_time_h
         self._calculation_time_min = calculation_time_min
         self._period_split_h = period_split_h
-        self.set_auto_create_enabled(True)
+        # Set default values initially, then attempt to load saved state
+        self.load_state()
+        # Activate auto create
+        self.set_auto_create_enabled(self._auto_create_enabled)
 
     def loop(self):
         # Call periodically to execute auto schedule creation
@@ -86,16 +95,18 @@ class AutoScheduleCreator:
         self._calculation_time_min = calculation_time_min
         if self._auto_create_enabled:
             self.set_up_scheduling()
+        self.save_state()
 
     def get_schedule_name(self):
         return self._hourly_schedule.name
 
     def get_parameters(self):
-        return self._period_split_h, self._max_total_cost, self._max_hours_to_run, self._min_hours_to_run,\
-                self._calculation_time_h, self._calculation_time_min
+        return self._period_split_h, self._max_total_cost, self._max_hours_to_run, self._min_hours_to_run, \
+            self._calculation_time_h, self._calculation_time_min
 
     def set_auto_create_enabled(self, off_on: bool):
         self._auto_create_enabled = off_on
+        self.save_state()
         if self._auto_create_enabled:
             self.set_up_scheduling()
 
@@ -139,6 +150,42 @@ class AutoScheduleCreator:
         # Get the closest allowed period length
         self._period_split_h = min(self.ALLOWED_PERIODS, key=lambda x: abs(x - self._period_split_h))
         logger.debug(f"Changed period to {self._period_split_h}")
+
+    def save_state(self):
+        state_to_save = {
+            "period_split_h": self._period_split_h,
+            "max_total_cost": self._max_total_cost,
+            "max_hours_to_run": self._max_hours_to_run,
+            "min_hours_to_run": self._min_hours_to_run,
+            "calculation_time_h": self._calculation_time_h,
+            "calculation_time_min": self._calculation_time_min,
+            "_auto_create_enabled": self._auto_create_enabled,
+            "_auto_create_period": self._auto_create_period,
+        }
+        StateSaver.save_state_to_file(base_path=self.state_file_loc, data=state_to_save, name=self.name)
+        logger.info(f"State saved successfully for {self.name}")
+
+    def load_state(self):
+        loaded_state = StateSaver.load_state_from_file(base_path=self.state_file_loc, name=self.name)
+        if loaded_state is None:
+            logger.info(f"No state file for this object {self.name} in {self.state_file_loc}")
+            return
+        try:
+            # Dictionary keys are read as strings from JSON, comvert them to ints
+            self._period_split_h = loaded_state["period_split_h"]
+            self._max_total_cost = loaded_state["max_total_cost"]
+            self._max_hours_to_run = loaded_state["max_hours_to_run"]
+            self._min_hours_to_run = loaded_state["min_hours_to_run"]
+            self._calculation_time_h = loaded_state["calculation_time_h"]
+            self._calculation_time_min = loaded_state["calculation_time_min"]
+            self._auto_create_period = loaded_state["_auto_create_period"]
+            self._auto_create_enabled = loaded_state["_auto_create_enabled"]
+            logger.info(f"State retrieved successfully for {self.name}")
+            logger.info(f"State {loaded_state}")
+        except KeyError as e:
+            logger.error(f"KeyError while loading state object {self.name}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to load state object {self.name}. Error: {e}")
 
 
 if __name__ == '__main__':

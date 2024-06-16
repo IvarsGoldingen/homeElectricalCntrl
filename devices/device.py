@@ -49,7 +49,11 @@ class Device(DeviceSubject, StateSaver):
         STATUS_BLOCKED: "Blocked"
     }
 
+    # Event for any change - mode change or cmd change
     event_name_status_changed = "device_status_changed"
+    # Event when device actually changes state - off or on, relevant only for devices with feedback
+    # Added so actua
+    event_name_actual_state_changed = "device_actual_state_changed"
 
     def __init__(self, device_type: DeviceType, name: str = "Test_device",
                  state_file_loc: str ="C:\\py_related\\home_el_cntrl\\state"):
@@ -189,5 +193,13 @@ class Device(DeviceSubject, StateSaver):
         Turn device on or off
         :param off_on: desired device state
         :return:
+        """
+        pass
+
+    @abstractmethod
+    def loop(self):
+        """
+        Implement method that will be called periodically.
+        Example: check status of device, check device state vs command, etc.
         """
         pass

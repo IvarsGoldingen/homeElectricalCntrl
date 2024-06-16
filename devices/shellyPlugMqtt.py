@@ -1,6 +1,6 @@
 """
 Class that inherits from MqttDevice class
-For controllingand monitoring a shelly smart plug
+For controlling and monitoring a shelly smart plug
 Mqtt must be enabled from the webservice of the device
 """
 import time
@@ -138,13 +138,20 @@ class ShellyPlug(MqttDevice):
                 # handle bools differently because if cast from string they will always be true
                 if topic == self.state_topic:
                     self.cmd_sent_out = False
+                    received_new_state = True
+                    received_state = False
                     # For state the data is either "on" or "off"
                     if clean_data.lower() == "on":
-                        self.state_off_on = True
+                        received_state = True
                     elif clean_data.lower() == "off":
-                        self.state_off_on = False
+                        received_state = False
                     else:
+                        received_new_state = False
                         logger.error(f"Unknown value for bool variable: {clean_data}")
+                    if received_new_state:
+                        if received_state != self.state_off_on:
+                            self.device_notify(self.event_name_actual_state_changed, self.name, self.device_type)
+                        self.state_off_on = received_state
             else:
                 # All other are int, real values that have to be cast from str
                 try:

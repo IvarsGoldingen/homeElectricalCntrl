@@ -45,7 +45,7 @@ class HourlySchedule2days(Subject, StateSaver):
     event_name_schedule_change = "schedule_changed"
     event_name_new_device_associated = "new_device_associated"
 
-    def __init__(self, name: str,state_file_loc: str ="C:\\py_related\\home_el_cntrl\\state"):
+    def __init__(self, name: str, state_file_loc: str = "C:\\py_related\\home_el_cntrl\\state"):
         """
         :param name: Name of schedule
         """

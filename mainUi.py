@@ -2,7 +2,6 @@
 Application for controlling home automation:
 *Control and monitoring of MQTT devices
 *Creating schedules according to electricity price
-TODO: MQTT security
 """
 
 import os
@@ -14,12 +13,14 @@ from custom_devices.vallux_ahu import ValloxAhu
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.shellyPlus import ShellyPlus
 from devices.shellyPlusPM import ShellyPlusPM
+from devices.shellyPlugUrlControlled import URLControlledShellyPlug
 from devices.device import Device
 from devices.deviceTypes import DeviceType
 from helpers.mqtt_client import MyMqttClient
 from helpers.price_file_manager import PriceFileManager
 from custom_tk_widgets.shelly_plug_widget import ShellyPlugWidget
 from custom_tk_widgets.shelly_plus_widget import ShellyPlusWidget
+from custom_tk_widgets.shelly_plug_url_widget import ShellyPlugUrlWidget
 from custom_tk_widgets.shelly_plus_pm_widget import ShellyPlusPmWidget
 from custom_tk_widgets.schedule_2_days_widget import Schedule2DaysWidget
 from schedules.hourly_schedule import HourlySchedule2days
@@ -112,7 +113,13 @@ class MainUIClass(Tk, Observer):
                                     periodical_log_interval_s=600)
         self.price_mngr.register(self.db_logger, PriceFileManager.event_name_prices_changed)
         for dev in self.dev_list:
-            dev.register(self.db_logger, Device.event_name_status_changed)
+            if dev.device_type == DeviceType.SHELLY_PLUG or \
+                    dev.device_type == DeviceType.SHELLY_PLUS or \
+                    dev.device_type == DeviceType.SHELLY_PLUS_PM or \
+                    dev.device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG:
+                dev.register(self.db_logger, Device.event_name_actual_state_changed)
+            else:
+                logger.error(f"Logging not implemented for {dev.device_type} in method setup_db_logger")
 
     def mainloop_user(self):
         # Not used, instead Timer from Threading used
@@ -192,10 +199,14 @@ class MainUIClass(Tk, Observer):
         self.smart_relay2 = ShellyPlusPM(name="Relay 2",
                                          mqtt_publish=self.mqtt_client.publish,
                                          plug_id="shellyplus1pm-d48afc417d58")
+        self.plug3_url = URLControlledShellyPlug(name="URL plug",
+                                                 url_on="http://172.31.0.246/relay/0?turn=on",
+                                                 url_off="http://172.31.0.246/relay/0?turn=off")
         self.dev_list.append(self.plug1)
         self.dev_list.append(self.plug2)
         self.dev_list.append(self.smart_relay1)
         self.dev_list.append(self.smart_relay2)
+        self.dev_list.append(self.plug3_url)
         for dev in self.dev_list:
             if dev.device_type == DeviceType.SHELLY_PLUG or \
                     dev.device_type == DeviceType.SHELLY_PLUS or \
@@ -238,6 +249,7 @@ class MainUIClass(Tk, Observer):
         # Place all widgets in one frame
         self.dev_widgets = []
         for dev in self.dev_list:
+            # For each device type create the apropriate widget and register listeners to those widgets
             if dev.device_type == DeviceType.SHELLY_PLUG:
                 shelly_widget = ShellyPlugWidget(parent=self.frame_devices, device=dev)
                 dev.register(shelly_widget, Device.event_name_status_changed)
@@ -255,6 +267,11 @@ class MainUIClass(Tk, Observer):
                 dev.register(shelly_plus_pm_widget, ShellyPlus.event_name_new_extra_data)
                 dev.register(shelly_plus_pm_widget, ShellyPlus.event_name_input_state_change)
                 self.dev_widgets.append(shelly_plus_pm_widget)
+            elif dev.device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG:
+                shelly_url_widget = ShellyPlugUrlWidget(parent=self.frame_devices, device=dev)
+                dev.register(shelly_url_widget, Device.event_name_status_changed)
+                dev.register(shelly_url_widget, URLControlledShellyPlug.event_name_new_extra_data)
+                self.dev_widgets.append(shelly_url_widget)
             else:
                 logger.warning("Device list contains device without widget associated to its type")
         if settings.AHU_ENABLED:

@@ -10,11 +10,9 @@ from typing import Callable, Dict, Tuple
 from helpers.observer_pattern import Observer
 from helpers.price_file_manager import PriceFileManager
 from devices.device import Device
-from devices.shellyPlugMqtt import ShellyPlug
 from devices.deviceTypes import DeviceType
 from helpers.sensor import Sensor
 from helpers.database_mngr import DbMngr
-from devices.mqttDevice import MqttDevice
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -88,7 +86,7 @@ class DataLogger(Observer):
         # Handle events initiated by devices this class is listening to
         if event_type == PriceFileManager.event_name_prices_changed:
             self.get_and_store_prices()
-        elif event_type == Device.event_name_status_changed:
+        elif event_type == Device.event_name_actual_state_changed:
             device_type = kwargs.get('device_type')
             device_name = kwargs.get('device_name')
             if not device_type or not device_name:
@@ -111,10 +109,11 @@ class DataLogger(Observer):
         device_type = dev.device_type
         if device_type == DeviceType.SHELLY_PLUG or \
                 device_type == DeviceType.SHELLY_PLUS or \
+                device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG or \
                 device_type == DeviceType.SHELLY_PLUS_PM:
             self.data_queue.put({"log_type": self.LogType.SHELLY_LOG, "data": dev})
         else:
-            logger.error(f"Device type not recognised {device_type}")
+            logger.warning(f"Device type not recognised {device_type}")
 
     def get_device_by_name(self, device_name):
         # get device object by name
@@ -182,6 +181,9 @@ class DataLogger(Observer):
             self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
                                                    dev.get_status(), dev.power, dev.energy,
                                                    dev.voltage, dev.current)
+        elif dev.device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG:
+            self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
+                                                   dev.get_status())
 
 
 if __name__ == '__main__':
