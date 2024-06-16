@@ -35,7 +35,7 @@ class URLControlledDev(Device):
     def __init__(self,
                  url_off: str,
                  url_on: str,
-                 device_type: DeviceType = DeviceType.URL_CONTROLLED_DEV,
+                 device_type: DeviceType,
                  name: str = "Test URL controlled device"):
         """
         @param url_off:
