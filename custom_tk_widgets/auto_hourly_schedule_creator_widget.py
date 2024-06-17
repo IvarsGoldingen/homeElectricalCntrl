@@ -31,12 +31,14 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
     TEXT_BOX_WIDTH = 6
     TEXT_BOX_HEIGHT = 1
 
-    def __init__(self, parent, auto_schedule_creator: AutoScheduleCreator):
+    def __init__(self, parent, auto_schedule_creator: AutoScheduleCreator, display_price_per_kwh: bool = True):
         """
         :param parent: parent view
         :param fc_to_call: method to call with the results
         """
         super().__init__(parent, borderwidth=2, relief="solid")
+        # Default price comes as price per MWh
+        self.display_price_per_kwh = display_price_per_kwh
         self.auto_schedule_creator = auto_schedule_creator
         self.btn_create_now, self.btn_apply_settings, self.btn_toggle_enabled = None, None, None
         # widget labels
@@ -65,6 +67,8 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
     def update_actual_settings(self):
         period_split_h, max_total_cost, max_hours_to_run, min_hours_to_run, calculation_time_h, \
             calculation_time_min = self.auto_schedule_creator.get_parameters()
+        max_total_cost = max_total_cost / 1000 if self.display_price_per_kwh else max_total_cost
+        max_total_cost = round(max_total_cost, 2) if self.display_price_per_kwh else round(max_total_cost, 1)
         self.lbl_max_total_cost_act.config(text=f" {max_total_cost}")
         self.lbl_h_period_split_act.config(text=f" {period_split_h}")
         self.lbl_max_h_act.config(text=f" {max_hours_to_run}")
@@ -92,6 +96,8 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
         calc_min_str = self.txt_calc_min.get("1.0", "end-1c")
         try:
             max_total_float = float(max_total_str)
+            # Program uses prices per MWh, if UI set to per kWh, convert
+            max_total_float = max_total_float*1000 if self.display_price_per_kwh else max_total_float
             period_split_int = int(period_split_str)
             max_h_int = int(max_h_str)
             min_h_int = int(min_h_str)

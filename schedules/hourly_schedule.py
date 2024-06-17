@@ -44,6 +44,7 @@ class HourlySchedule2days(Subject, StateSaver):
 
     event_name_schedule_change = "schedule_changed"
     event_name_new_device_associated = "new_device_associated"
+    event_name_hour_changed = "hour_change"
 
     def __init__(self, name: str, state_file_loc: str = "C:\\py_related\\home_el_cntrl\\state"):
         """
@@ -57,6 +58,8 @@ class HourlySchedule2days(Subject, StateSaver):
         self.schedule_today = {key: False for key in range(24)}
         self.schedule_tomorrow = {key: False for key in range(24)}
         self.datetime_now = datetime.date.today()
+        # To display in UI
+        self.current_hour = datetime.datetime.now().hour
         self.load_state()
         # Devices linked to this schedule - used to execute schedule
         self.device_list: Optional[List[Device]] = []
@@ -98,8 +101,18 @@ class HourlySchedule2days(Subject, StateSaver):
         :return:
         """
         self.check_if_new_day()
-        expected_state = self.get_current_expected_state()
+        hour_now = datetime.datetime.now().hour
+        expected_state = self.schedule_today[hour_now]
         self.set_device_cmds(expected_state)
+        self.check_hour_change(hour_now)
+
+    def check_hour_change(self, hour_now: int):
+        """
+        Check if hour has changed, so UI can display current hour
+        """
+        if hour_now != self.current_hour:
+            self.current_hour = hour_now
+            self.notify_observers(HourlySchedule2days.event_name_hour_changed)
 
     def set_device_cmds(self, cmd: bool):
         """

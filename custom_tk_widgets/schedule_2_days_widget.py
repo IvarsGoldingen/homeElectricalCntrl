@@ -34,8 +34,10 @@ class Schedule2DaysWidget(tk.Frame, Observer):
     KEY_TODAY = 1
     KEY_TOMORROW = 2
 
-    def __init__(self, parent, schedule: HourlySchedule2days):
+    def __init__(self, parent, schedule: HourlySchedule2days, display_price_per_kwh: bool = True):
         super().__init__(parent, borderwidth=2, relief="solid")
+        # Default price comes as price per MWh
+        self.display_price_per_kwh = display_price_per_kwh
         # SChedule asociated with the widget
         self.schedule = schedule
         # UI objects containing the checkboxes
@@ -47,6 +49,7 @@ class Schedule2DaysWidget(tk.Frame, Observer):
         self._prepare_widget_elements()
         self._place_widget_elements()
         self.update_widget()
+        self.indicate_current_hour()
 
     def _place_widget_elements(self):
         for nr, frame in enumerate(self.frame_list_today):
@@ -89,14 +92,26 @@ class Schedule2DaysWidget(tk.Frame, Observer):
             self.lbl_check_box_list_tomorrow.append(Label(self.frame_list_tomorrow[i], text=f"{i:02}:00",
                                                           width=self.HOUR_WIDTH))
 
-    def handle_subject_event(self, event_type: str):
-        # The subject has notified this of an event
+    def handle_subject_event(self, event_type: str, **kwargs):
+        # The subject has notified this of an eve
         logger.debug(f"Widget notified of an event {event_type}")
-        self.update_widget()
+        if event_type == self.schedule.event_name_hour_changed:
+            self.indicate_current_hour()
+        else:
+            self.update_widget()
 
     def update_widget(self):
         self.update_checkboxes()
         self.update_associated_device()
+
+    def indicate_current_hour(self):
+        for hour, checkbox_label in enumerate(self.lbl_check_box_list_today):
+            if hour == self.schedule.current_hour:
+                checkbox_label.configure(font=("Segoe UI", 9, "bold"))
+                # indicate current hour
+            else:
+                # clear indication for all other
+                checkbox_label.configure(font=("Segoe UI", 9, "normal"))
 
     def update_associated_device(self):
         # Add text to widget which displays which devices does the schedule control
@@ -111,16 +126,29 @@ class Schedule2DaysWidget(tk.Frame, Observer):
                                                self.schedule.schedule_tomorrow.values()):
             checkbox_value.set(hour_off_on)
 
-    def add_extra_text_for_hours(self, text_list_today: list, text_list_tomorrow: list):
-        logger.debug("Adding extra text for hours")
-        if len(text_list_today) != 24 or len(text_list_tomorrow) != 24:
+    def add_price_to_hourly_checkbox_label(self, price_list_today: list[float], price_list_tomorrow: list[float]):
+        logger.debug("Adding price for hours")
+        if len(price_list_today) != 24 or len(price_list_tomorrow) != 24:
             logger.error("Unexpected additional text list for hours")
             # expected new text for each hour
             return
-        for hour, (lbl, extra_text) in enumerate(zip(self.lbl_check_box_list_today, text_list_today)):
-            lbl.config(text=f"{hour:02}:00\r{extra_text}")
-        for hour, (lbl, extra_text) in enumerate(zip(self.lbl_check_box_list_tomorrow, text_list_tomorrow)):
-            lbl.config(text=f"{hour:02}:00\r{extra_text}")
+        decimal_places = 3 if self.display_price_per_kwh else 2
+        for hour, (lbl, price) in enumerate(zip(self.lbl_check_box_list_today, price_list_today)):
+            price = self.convert_price_per_mwh_to_kwh(price) if self.display_price_per_kwh else price
+            price = round(price, decimal_places)
+            lbl.config(text=f"{hour:02}:00\r{price}")
+        for hour, (lbl, price) in enumerate(zip(self.lbl_check_box_list_tomorrow, price_list_tomorrow)):
+            price = self.convert_price_per_mwh_to_kwh(price) if self.display_price_per_kwh else price
+            price = round(price, decimal_places)
+            lbl.config(text=f"{hour:02}:00\r{price}")
+
+    def convert_price_per_mwh_to_kwh(self, value):
+        try:
+            return value / 1000.0
+        except Exception as e:
+            logger.error(f"Could not convert mwh to kwh price for value {value}")
+            logger.error(f"{e}")
+            return value
 
     def checkbox_value_changed(self, nr: int, day: int):
         """

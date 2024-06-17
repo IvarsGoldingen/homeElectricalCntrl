@@ -74,6 +74,8 @@ class MainUIClass(Tk, Observer):
     DUMMY_PRICE_VALUE = -99.99
     # Price file location
     PRICE_FILE_LOCATION = "C:\\py_related\\home_el_cntrl\\price_lists"
+    # display price per kWh, default is per MWh
+    DISPLAY_PRICE_PER_KWH = True
 
     def __init__(self):
         super().__init__()
@@ -233,7 +235,7 @@ class MainUIClass(Tk, Observer):
             price_list_today[hour] = value
         for hour, value in prices_tomorrow.items():
             price_list_tomorrow[hour] = value
-        self.schedule_widget.add_extra_text_for_hours(price_list_today, price_list_tomorrow)
+        self.schedule_widget.add_price_to_hourly_checkbox_label(price_list_today, price_list_tomorrow)
 
     def prepare_ui_elements(self):
         """
@@ -279,12 +281,14 @@ class MainUIClass(Tk, Observer):
             self.ahu_widget = AhuWidget(parent=self.frame_devices, ahu=self.ahu)
             self.ahu.register(self.ahu_widget, ValloxAhu.event_name_new_data)
         # Create schedule widgets and register them as listeners for desired schedules
-        self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days)
+        self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days,
+                                                   display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)
         self.frame_widgets_bottom = Frame(self)
         self.auto_schedule_creator_widget = AutoHourlyScheduleCreatorWidget(parent=self.frame_widgets_bottom,
-                                                                            auto_schedule_creator=self.auto_sch_creator)
+                                                                            auto_schedule_creator=self.auto_sch_creator,
+                                                                display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
         self.alarm_clock_widget = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
                                                                   sch=self.alarm_clock)
         self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_schedule_change)
