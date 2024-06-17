@@ -285,6 +285,7 @@ class MainUIClass(Tk, Observer):
                                                    display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)
+        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_hour_changed)
         self.frame_widgets_bottom = Frame(self)
         self.auto_schedule_creator_widget = AutoHourlyScheduleCreatorWidget(parent=self.frame_widgets_bottom,
                                                                             auto_schedule_creator=self.auto_sch_creator,
