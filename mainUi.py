@@ -56,6 +56,7 @@ def main():
 
 # Mainclass extends tkinter for creation of UI
 class MainUIClass(Tk, Observer):
+    PERIODICAL_LOG_INTERVAL_S = 60
     # How often call mainloop
     MAINLOOP_OTHER_INTERVAL_MS = 100
     # How often should device loops be called
@@ -112,7 +113,7 @@ class MainUIClass(Tk, Observer):
             all_sensors.extend(ahu_sensors)
         self.db_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                     device_list=self.dev_list, sensor_list=all_sensors,
-                                    periodical_log_interval_s=600)
+                                    periodical_log_interval_s=self.PERIODICAL_LOG_INTERVAL_S)
         self.price_mngr.register(self.db_logger, PriceFileManager.event_name_prices_changed)
         for dev in self.dev_list:
             if dev.device_type == DeviceType.SHELLY_PLUG or \

@@ -64,6 +64,8 @@ class URLControlledShellyPlug(URLControlledDev):
         @param url_on: Example shelly http://172.31.0.246/relay/0?turn=on
         """
         self.time_of_last_call = time.perf_counter()
+        # On first URL call print error but not otherwise
+        self.first_url_call = True
         super().__init__(url_off, url_on, device_type, name)
 
     def loop(self):
@@ -108,6 +110,7 @@ class URLControlledShellyPlug(URLControlledDev):
         """
         return_result = {"Success": False,
                          "ison": False}
+
         try:
             dev_reply = json.loads(urlopen(url, timeout=URLControlledDev.TIMEOUT_TIME_S).read())
             logger.debug(f"{self.name} URL call reply {dev_reply}")
@@ -115,13 +118,22 @@ class URLControlledShellyPlug(URLControlledDev):
             return_result["Success"] = True
             return_result["ison"] = dev_reply["ison"]
         except TimeoutError:
-            logger.error(f"Timeout device name {self.name} url {url}")
+            self.log_url_call_error(f"Timeout device name {self.name} url {url}")
         except URLError:
-            logger.error(f"URL error device name {self.name} url {url}")
+            self.log_url_call_error(f"URL error device name: {self.name} url: {url}")
         except Exception as e:
-            logger.error(f"Other error when attempting to call URL device name {self.name} url {url}")
-            logger.error(e)
+            self.log_url_call_error(f"Other error when attempting to call URL device name {self.name} url {url}", e)
+        self.first_url_call = False
         return_queue.put(return_result)
+
+    def log_url_call_error(self, message: str, exception: Exception = None):
+        """
+        Log URL error only on first call or if device was online previously
+        """
+        if self.state_online or self.first_url_call:
+            logger.error(message)
+            if exception:
+                logger.error(exception)
 
 
 if __name__ == '__main__':
