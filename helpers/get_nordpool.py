@@ -37,10 +37,22 @@ class NordpoolGetter:
         """
         logger.info("Attempting to get data from Nordpool")
         prices_spot = elspot.Prices()
+        success = False
         try:
             prices_dict = prices_spot.hourly(areas=['LV'])
+            if prices_dict is not None:
+                success = True
+            else:
+                logger.exception("Prices dictionary empty")
+        except requests.exceptions.ReadTimeout:
+            logger.exception("Request timed out. The server took too long to respond.")
+        except requests.exceptions.JSONDecodeError:
+            logger.exception("Nordpool: no data yet available")
         except requests.exceptions.ConnectionError:
             logger.exception("Failed to connect to Nordpool")
+        except Exception as e:
+            logger.exception("Unknown exception when trying to connect to Nordpool")
+        if not success:
             return None, None
         hourly_price_list = prices_dict.get("areas").get("LV").get("values")
         logger.debug(f'{len(hourly_price_list)} items in hourly prices list')

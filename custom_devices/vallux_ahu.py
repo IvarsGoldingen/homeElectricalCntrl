@@ -303,14 +303,6 @@ class ValloxAhu(Subject):
             logger.info("Closing driver")
             try:
                 self.driver.close()
-                # TODO: always getting error:
-                """
-                HTTPConnectionPool(host='localhost', port=57268): Max retries exceeded with url: 
-                /session/c84807f0-afd5-48c7-ab93-0c859cc583a9/window 
-                (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x0000014C61EBB390>: 
-                Failed to establish a new connection: [WinError 10061] No connection could be made because the target
-                machine actively refused it'))
-                """
             except Exception as e:
                 logger.error("Closed with exception")
                 logger.error(e)
