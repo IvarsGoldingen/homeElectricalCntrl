@@ -24,7 +24,7 @@ logger.addHandler(file_handler)
 
 
 def test():
-    NordpoolGetter.get_tomorrow_price_list()
+    print(NordpoolGetter.get_tomorrow_price_list())
 
 
 class NordpoolGetter:
