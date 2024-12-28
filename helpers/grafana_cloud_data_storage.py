@@ -1,11 +1,7 @@
 import logging
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import requests
-import time
-
-from selenium.webdriver.remote.remote_connection import LOGGER
-
 import secrets
 from helpers.data_storage_interface import DataStoreInterface
 from helpers.sensor import Sensor
@@ -52,6 +48,8 @@ class GrafanaCloud(DataStoreInterface):
     """
     Class for sending data to Grafana cloud using http requests
     """
+
+
 
     def __init__(self, endpoint: str, username: str, password: str, source_tag: str) -> None:
         self._url = endpoint
@@ -138,6 +136,22 @@ class GrafanaCloud(DataStoreInterface):
                 logger.error(f"Sensor{s}, value {s.value}")
         return payload
 
+    def insert_current_hour_price(self, current_price: float, timestamp: datetime):
+        payload = self._get_payload_from_hourly_price(current_price,timestamp)
+        self._post_to_cloud(payload)
+
+    def _get_payload_from_hourly_price(self, current_price: float, timestamp: datetime) -> str:
+        """
+        :param current_price - for hour in timestamp:
+        :param timestamp - must be UTC:
+        Return payload for posting to Grafana
+        For price, create payload like this:
+        electricity,source=source_tag price=10.0 timestamp_ns
+        """
+        payload = f"electricity,source={self._source_tag} price={current_price:.2f}"
+        payload = self._add_timestamp_to_payload(payload, timestamp)
+        return payload
+
     def _add_timestamp_to_payload(self, payload:str, timestamp: datetime = None) -> str:
         if timestamp:
             payload = payload + f" {self._get_timestamp_from_dt(timestamp)}"
@@ -187,6 +201,8 @@ class GrafanaCloud(DataStoreInterface):
         """Nothing to stop since uses http requests"""
         pass
 
+    def insert_prices(self, prices: dict, date: datetime.date):
+        raise NotImplementedError("Grafana cloud does not implement this method, use insert_current_hour_price instead")
 
 if __name__ == "__main__":
     test_fc()

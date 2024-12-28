@@ -96,7 +96,7 @@ class PriceFileManager(Subject):
 
     def get_prices_today_tomorrow(self) -> [dict, dict]:
         """
-        today and tomorrow prices are the prices in the dictionary
+        today and tomorrow prices are the prices in the dictionary. Key is hour, value is price for that hour
         :return:
         """
         # For today just try to read the file, if it does not exist there will be an empty dict

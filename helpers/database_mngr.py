@@ -498,6 +498,8 @@ class DbMngr(DataStoreInterface):
         db_mngr.conn.commit()
     """
 
+    def insert_current_hour_price(self, current_price: float, timestamp: datetime):
+        raise NotImplementedError("SQLite does not implement this method, use insert_prices instead")
 
     def stop(self):
         self.conn.close()

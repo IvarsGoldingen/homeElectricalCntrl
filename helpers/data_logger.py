@@ -3,9 +3,9 @@ import os
 from enum import Enum, auto
 from threading import Timer
 import queue
-import time
+from time import sleep
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone, time
 from typing import Callable, Dict, Tuple
 
 from helpers.grafana_cloud_data_storage import GrafanaCloud
@@ -42,9 +42,11 @@ class DataLogger(Observer):
     Class for logging historical data of home automation program
     Periodical and on data change logging
     """
+    ON_TIME_LOG_CHECK_INTERVAL_S = 0.5
 
     class LogType(Enum):
         PRICE_LOG = auto()
+        PRICE_LOG_GRAFANA = auto()
         SHELLY_LOG = auto()
         SENSOR_LOG = auto()
         STOP_LOG = auto()
@@ -62,16 +64,61 @@ class DataLogger(Observer):
         self.device_list = device_list
         self.sensor_list = sensor_list
         self.data_queue = queue.Queue()
+        # To periodically execute logging
         self.periodical_log_thread = Timer(self.periodical_log_interval_s, self.periodical_log)
         self.periodical_log_thread.start()
+        # To execute logging on time - for example exact hour, exact minute etc
+        self.on_time_log_thread = Timer(self.ON_TIME_LOG_CHECK_INTERVAL_S, self.on_time_log)
+        self.on_time_log_thread.start()
+        self.hour_old = datetime.now().hour
+        # Thread that will handle putting data in storage locations
         self.data_storage_thread = threading.Thread(target=self.data_storage_thread_method, args=(self.data_queue,))
         self.data_storage_thread.start()
+
+    def on_time_log(self):
+        """
+        Executes often for logging of data on exact times - on hour, on minute etc.
+        """
+        self.on_new_hour_log()
+        self.on_time_log_thread = Timer(self.ON_TIME_LOG_CHECK_INTERVAL_S, self.on_time_log)
+        self.on_time_log_thread.start()
 
     def periodical_log(self):
         self.periodical_device_log()
         self.periodical_sensor_log()
         self.periodical_log_thread = Timer(self.periodical_log_interval_s, self.periodical_log)
         self.periodical_log_thread.start()
+
+    def on_new_hour_log(self):
+        if self.hour_old != datetime.now().hour:
+            self.hour_old = datetime.now().hour
+            self.log_electricity_price_hourly(self.hour_old)
+
+    def log_electricity_price_hourly(self, current_hour: int):
+        """
+        Needed because Grafana does not allow inserting of future prices
+        :param current_hour:
+        :return:
+        """
+        # TODO: delete info log statements after test
+        logger.info("Logging price hourly")
+        prices_today, prices_tomorrow = self.get_prices_method()
+        try:
+            current_price = prices_today[current_hour]
+        except KeyError:
+            logger.info("No price for hour")
+            return
+        # Get the timestamp of exact hour
+        # Get today's date
+        datetime_now = datetime.now()
+        datetime_now = datetime_now.replace(minute=0, second=0, microsecond=0)
+        # Combine with a specific time (16:00:00)
+        # Convert to UTC
+        timestamp = datetime_now.astimezone(timezone.utc)
+        logger.info(f"current_price {current_price}, timestamp {timestamp}")
+        self.data_queue.put({"log_type": self.LogType.PRICE_LOG_GRAFANA, "data": (current_price, timestamp)})
+
+
 
     def periodical_sensor_log(self):
         self.data_queue.put({"log_type": self.LogType.SENSOR_LOG, "data": self.sensor_list})
@@ -137,11 +184,12 @@ class DataLogger(Observer):
         logger.info("Stopping data logger")
         # Stop periodicall logging
         self.periodical_log_thread.cancel()
+        self.on_time_log_thread.cancel()
         # Stop database thread
         self.data_queue.put({"log_type": self.LogType.STOP_LOG})
-        logger.info("Join start")
+        logger.info("Waiting for data handle thread to stop")
         self.data_storage_thread.join()
-        logger.info("Join end")
+        logger.info("Data handling thread stopped")
 
     def data_storage_thread_method(self, data_queue):
         """
@@ -167,9 +215,12 @@ class DataLogger(Observer):
                     self.log_shelly_data(data["data"])
                 elif data["log_type"] == self.LogType.PRICE_LOG:
                     # Received price data
-                    # TODO: log to grafana cloud as well
                     prices_dic, price_date = data["data"]
                     self.db_mngr.insert_prices(prices_dic, price_date)
+                elif data["log_type"] == self.LogType.PRICE_LOG_GRAFANA:
+                    # New hour, log price to Grafana
+                    current_price, timestamp = data["data"]
+                    self.grafana_cloud.insert_current_hour_price(current_price,timestamp)
                 elif data["log_type"] == self.LogType.SENSOR_LOG:
                     sensor_list = data["data"]
                     for storage in self.storage_list:
@@ -177,7 +228,10 @@ class DataLogger(Observer):
                 elif data["log_type"] == self.LogType.STOP_LOG:
                     # Stopping data base thread
                     run = False
-            time.sleep(0.5)
+                else:
+                    log_type = data["log_type"]
+                    logger.error(f"Unknown value in queue {log_type}")
+            sleep(0.5)
         # close sqlite database
         self.db_mngr.stop()
 
