@@ -1,0 +1,1 @@
+NO_DATA_VALUE = -0.99

@@ -15,6 +15,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 from helpers.observer_pattern import Subject
 from helpers.sensor import Sensor
+import global_var
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -71,7 +72,7 @@ class ValloxAhu(Subject):
     """
     # Max new data request frequency
     _MAX_NEW_DATA_REQ_S = 300.0
-    NO_DATA_VALUE = -99.99
+    NO_DATA_VALUE = global_var.NO_DATA_VALUE
     FAN_SPEED_NAME = "fan_speed"
     RH_NAME = "rh"
     CO2_NAME = "co2"
@@ -166,7 +167,7 @@ class ValloxAhu(Subject):
 
     class AhuWebScrapeThread(threading.Thread):
 
-        NO_DATA_VALUE = -99.99
+        NO_DATA_VALUE = global_var.NO_DATA_VALUE
         # Variables used to find values in the web page using selenium
         ELEM_XPATH_RH = "//div[@l10n-path='dashboard.profile.humidity']"
         ELEM_XPATH_CO2 = "//div[@l10n-path='dashboard.profile.co2']"
@@ -294,7 +295,8 @@ class ValloxAhu(Subject):
             match = re.match(r'^[-+]?\d*\.?\d+', str_value)
             # Check if a match is found
             if match:
-                return match.group()
+                # 2024.12.28 added cast to float
+                return float(match.group())
             else:
                 logger.error("Could not convert string value to number")
                 return self.NO_DATA_VALUE

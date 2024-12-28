@@ -63,12 +63,6 @@ class ShellyPlusPM(ShellyPlus):
 
     def process_received_mqtt_data(self, topic: str, data: str):
         """
-        self.power
-        self.voltage
-        self.current
-        self.energy
-        """
-        """
         This will be called by the Mqtt client when a relevant message to this device is published
         :param topic: mqtt topic
         :param data: payload

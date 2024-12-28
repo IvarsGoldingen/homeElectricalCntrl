@@ -11,7 +11,7 @@ from devices.deviceTypes import DeviceType
 
 class MqttDevice(Device):
     # Value for
-    NO_DATA_VALUE = -99.99
+    NO_DATA_VALUE = -0.99
 
     def __init__(self, mqtt_publish: Callable[[str, str], None],
                  device_type: DeviceType,

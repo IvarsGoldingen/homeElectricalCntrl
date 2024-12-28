@@ -7,12 +7,15 @@ import time
 import threading
 from datetime import datetime, timedelta
 from typing import Callable, Dict, Tuple
+
+from helpers.grafana_cloud_data_storage import GrafanaCloud
 from helpers.observer_pattern import Observer
 from helpers.price_file_manager import PriceFileManager
 from devices.device import Device
 from devices.deviceTypes import DeviceType
 from helpers.sensor import Sensor
 from helpers.database_mngr import DbMngr
+import secrets
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -61,8 +64,8 @@ class DataLogger(Observer):
         self.data_queue = queue.Queue()
         self.periodical_log_thread = Timer(self.periodical_log_interval_s, self.periodical_log)
         self.periodical_log_thread.start()
-        self.db_thread = threading.Thread(target=self.db_mngr_thread_method, args=(self.data_queue,))
-        self.db_thread.start()
+        self.data_storage_thread = threading.Thread(target=self.data_storage_thread_method, args=(self.data_queue,))
+        self.data_storage_thread.start()
 
     def periodical_log(self):
         self.periodical_device_log()
@@ -137,16 +140,24 @@ class DataLogger(Observer):
         # Stop database thread
         self.data_queue.put({"log_type": self.LogType.STOP_LOG})
         logger.info("Join start")
-        self.db_thread.join()
+        self.data_storage_thread.join()
         logger.info("Join end")
 
-    def db_mngr_thread_method(self, data_queue):
+    def data_storage_thread_method(self, data_queue):
         """
         Worker running on seperate thread. handles data storage in database.
         :param data_queue: queue for data exchange with main thread
         :return:
         """
+        # Store in sqlite database
         self.db_mngr = DbMngr()
+        # Store in grafana cloud
+        self.grafana_cloud = GrafanaCloud(endpoint=secrets.GRAFANA_ENDPOINT,
+                                 username=secrets.GRAFANA_USERNAME,
+                                 password=secrets.GRAFANA_API_TOKEN,
+                                 source_tag="home_data")
+        # List of all storage locations
+        self.storage_list = (self.db_mngr, self.grafana_cloud)
         run = True
         while run:
             while not data_queue.empty():
@@ -156,33 +167,39 @@ class DataLogger(Observer):
                     self.log_shelly_data(data["data"])
                 elif data["log_type"] == self.LogType.PRICE_LOG:
                     # Received price data
+                    # TODO: log to grafana cloud as well
                     prices_dic, price_date = data["data"]
                     self.db_mngr.insert_prices(prices_dic, price_date)
                 elif data["log_type"] == self.LogType.SENSOR_LOG:
                     sensor_list = data["data"]
-                    self.db_mngr.insert_sensor_list_data(sensor_list)
+                    for storage in self.storage_list:
+                        storage.insert_sensor_list_data(sensor_list)
                 elif data["log_type"] == self.LogType.STOP_LOG:
                     # Stopping data base thread
                     run = False
             time.sleep(0.5)
-        # close db manager
+        # close sqlite database
         self.db_mngr.stop()
 
     def log_shelly_data(self, dev: Device):
         # Different shelly devices have different data available, but all data stored in single table. Fill missing data
         # with fake value
         if dev.device_type == DeviceType.SHELLY_PLUG:
-            self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
+            for storage in self.storage_list:
+                storage.insert_shelly_data(dev.name, dev.state_off_on,
                                                    dev.get_status(), dev.power, dev.energy, )
         elif dev.device_type == DeviceType.SHELLY_PLUS:
-            self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
+            for storage in self.storage_list:
+                storage.insert_shelly_data(dev.name, dev.state_off_on,
                                                    dev.get_status())
         elif dev.device_type == DeviceType.SHELLY_PLUS_PM:
-            self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
+            for storage in self.storage_list:
+                storage.insert_shelly_data(dev.name, dev.state_off_on,
                                                    dev.get_status(), dev.power, dev.energy,
                                                    dev.voltage, dev.current)
         elif dev.device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG:
-            self.db_mngr.insert_shelly_data_w_type(dev.name, dev.state_off_on,
+            for storage in self.storage_list:
+                storage.insert_shelly_data(dev.name, dev.state_off_on,
                                                    dev.get_status())
 
 

@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from devices.deviceTypes import DeviceType
 from helpers.sensor import Sensor
-
+from helpers.data_storage_interface import DataStoreInterface
 
 def main_fc():
     db_mngr = DbMngr()
@@ -85,7 +85,7 @@ def insert_fake_shelly_data(db_mngr):
     db_mngr.insert_shelly_data("sample_device3", True, 333.0, 6, energy=440.01)
 
 
-class DbMngr:
+class DbMngr(DataStoreInterface):
     """
     Class for storing home automation related data in database
     Project has 3 tables:
@@ -96,6 +96,7 @@ class DbMngr:
     sensor_data - read sensor values - linked to sensors table
     TODO: Auto delete data older than
     """
+    NO_DATA_VALUE = -0.99
 
     def __init__(self, db_name: str = "home_data.db",
                  db_loc: str = "C:\\py_related\\home_el_cntrl\\db"):
@@ -111,17 +112,6 @@ class DbMngr:
 
     def show_last_ten_rows(self, table_name):
         """
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS shelly_data (
-                      id INTEGER PRIMARY KEY,
-                      device_id INTEGER,
-                      record_time DATETIME,
-                      date DATE,
-                      off_on BOOLEAN,
-                      power FLOAT,
-                      device_status INTEGER,
-                      energy FLOAT,
-                      FOREIGN KEY(device_id) REFERENCES devices(device_id)
-                   )''')
         """
         # Execute a SELECT query to retrieve the last 10 rows from a table (replace 'your_table' with the actual table name)
         self.cursor.execute(f"SELECT * FROM {table_name} ORDER BY id DESC LIMIT 10")
@@ -197,28 +187,37 @@ class DbMngr:
                                     (energy_kwh, id))
         self.conn.commit()
 
-    def insert_shelly_data(self, name: str, off_on: bool, power: float, status: int, energy: float):
-        """
-        :param name: Shelly plug name
-        :param off_on: devices state on or off
-        :param power: current power - received from MQTT
-        :param status: status from the device class
-        :param energy: current energy - received from MQTT
-        :return:
-        """
-        current_time = datetime.now(timezone.utc)
-        formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
-        date_str = str(current_time.date())
-        # when inserting, get the device ID using the device name
-        self.cursor.execute('INSERT INTO shelly_data '
-                            '(device_id, record_time, date, off_on, power, device_status, energy) '
-                            'VALUES ((SELECT device_id FROM devices WHERE name = ?), '
-                            '?, ?, ?, ?, ?, ?)',
-                            (name, formatted_time, date_str, off_on, power, status, energy))
-        self.conn.commit()
+    # def insert_shelly_data(self, name: str, off_on: bool, power: float, status: int, energy: float):
+    #     """
+    #     :param name: Shelly plug name
+    #     :param off_on: devices state on or off
+    #     :param power: current power - received from MQTT
+    #     :param status: status from the device class
+    #     :param energy: current energy - received from MQTT
+    #     :return:
+    #     """
+    #     current_time = datetime.now(timezone.utc)
+    #     formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
+    #     date_str = str(current_time.date())
+    #     try:
+    #         # when inserting, get the device ID using the device name
+    #         self.cursor.execute('INSERT INTO shelly_data '
+    #                             '(device_id, record_time, date, off_on, power, device_status, energy) '
+    #                             'VALUES ((SELECT device_id FROM devices WHERE name = ?), '
+    #                             '?, ?, ?, ?, ?, ?)',
+    #                             (name, formatted_time, date_str, off_on, power, status, energy))
+    #         self.conn.commit()
+    #     except sqlite3.DatabaseError as db_error:
+    #         # logging.error("Database error occurred when inserting system data: %s", db_error)
+    #         self.conn.rollback()  # Roll back any changes if an error occurred
+    #     except Exception as e:
+    #         # logging.error("An unexpected error occurred when inserting system data: %s", e)
+    #         self.conn.rollback()
 
-    def insert_shelly_data_w_type(self, name: str, off_on: bool, status: int, power: float = -99.99,
-                                  energy: float = -99.99, voltage: float = -99.99, current: float = -99.99):
+
+    def insert_shelly_data(self, name: str, off_on: bool, status: int, power: float = NO_DATA_VALUE,
+                                  energy: float = NO_DATA_VALUE, voltage: float = NO_DATA_VALUE,
+                                  current: float = NO_DATA_VALUE):
         """
         :param name: Shelly plug name
         :param off_on: devices state on or off
@@ -230,25 +229,39 @@ class DbMngr:
         current_time = datetime.now(timezone.utc)
         formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
         date_str = str(current_time.date())
-        # when inserting, get the device ID using the device name
-        self.cursor.execute('INSERT INTO shelly_data '
-                            '(device_id, device_type, record_time, date, off_on, power, device_status, energy, '
-                            'voltage, current) '
-                            'VALUES ((SELECT device_id FROM devices WHERE name = ?), '
-                            '(SELECT type FROM devices WHERE name = ?), '
-                            '?, ?, ?, ?, ?, ?, ?, ?)',
-                            (name, name, formatted_time, date_str, off_on, power, status, energy, voltage, current))
-        self.conn.commit()
+        try:
+            # when inserting, get the device ID using the device name
+            self.cursor.execute('INSERT INTO shelly_data '
+                                '(device_id, device_type, record_time, date, off_on, power, device_status, energy, '
+                                'voltage, current) '
+                                'VALUES ((SELECT device_id FROM devices WHERE name = ?), '
+                                '(SELECT type FROM devices WHERE name = ?), '
+                                '?, ?, ?, ?, ?, ?, ?, ?)',
+                                (name, name, formatted_time, date_str, off_on, power, status, energy, voltage, current))
+            self.conn.commit()
+        except sqlite3.DatabaseError as db_error:
+            # logging.error("Database error occurred when inserting system data: %s", db_error)
+            self.conn.rollback()  # Roll back any changes if an error occurred
+        except Exception as e:
+            # logging.error("An unexpected error occurred when inserting system data: %s", e)
+            self.conn.rollback()
 
     def insert_sensor_list_data(self, sensor_list: list[Sensor]):
         current_time = datetime.now(timezone.utc)
         formatted_time = current_time.strftime('%Y-%m-%d %H:%M:%S')
         date_str = str(current_time.date())
-        for s in sensor_list:
-            # Add group name to values in database if there is one
-            name_to_use = s.name if not s.group_name else f"{s.group_name}_{s.name}"
-            self._do_sensor_cursor_statement(name_to_use, s.value, formatted_time, date_str)
-        self.conn.commit()
+        try:
+            for s in sensor_list:
+                # Add group name to values in database if there is one
+                name_to_use = s.name if not s.group_name else f"{s.group_name}_{s.name}"
+                self._do_sensor_cursor_statement(name_to_use, s.value, formatted_time, date_str)
+            self.conn.commit()
+        except sqlite3.DatabaseError as db_error:
+            # logging.error("Database error occurred when inserting system data: %s", db_error)
+            self.conn.rollback()  # Roll back any changes if an error occurred
+        except Exception as e:
+            # logging.error("An unexpected error occurred when inserting system data: %s", e)
+            self.conn.rollback()
 
     def _do_sensor_cursor_statement(self, name: str, value: float, formatted_time: str, date_str: str):
         """
@@ -272,16 +285,23 @@ class DbMngr:
         dif_from_utc = self.get_dif_from_utc()
         date_str_today = str(date)
         date_str_yesterday = str(date - timedelta(days=1))
-        for hour, value in prices.items():
-            hour_utc = hour - dif_from_utc
-            if hour_utc < 0:
-                hour_utc = 24 + hour_utc
-                date_str_to_use = date_str_yesterday
-            else:
-                date_str_to_use = date_str_today
-            self.cursor.execute('INSERT INTO prices (date, hour, price) VALUES (?, ?, ?)',
-                                (date_str_to_use, hour_utc, value))
-        self.conn.commit()
+        try:
+            for hour, value in prices.items():
+                hour_utc = hour - dif_from_utc
+                if hour_utc < 0:
+                    hour_utc = 24 + hour_utc
+                    date_str_to_use = date_str_yesterday
+                else:
+                    date_str_to_use = date_str_today
+                self.cursor.execute('INSERT INTO prices (date, hour, price) VALUES (?, ?, ?)',
+                                    (date_str_to_use, hour_utc, value))
+            self.conn.commit()
+        except sqlite3.DatabaseError as db_error:
+            # logging.error("Database error occurred when inserting system data: %s", db_error)
+            self.conn.rollback()  # Roll back any changes if an error occurred
+        except Exception as e:
+            # logging.error("An unexpected error occurred when inserting system data: %s", e)
+            self.conn.rollback()
 
     @staticmethod
     def get_dif_from_utc():
