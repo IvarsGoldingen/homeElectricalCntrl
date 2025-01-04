@@ -7,20 +7,22 @@ from urllib.request import urlopen
 from urllib.error import URLError
 from devices.deviceTypes import DeviceType
 from devices.urlControlledDevice import URLControlledDev
+import settings
 
 # Setup logger
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+logger.setLevel(settings.BASE_LOG_LEVEL)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
+stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
 logger.addHandler(stream_handler)
 
 # File logger
 file_handler = logging.FileHandler(os.path.join("../logs", "URLcontrolledShelly.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.INFO)
+file_handler.setLevel(settings.FILE_LOG_LEVEL)
 logger.addHandler(file_handler)
 
 

@@ -16,19 +16,21 @@ from selenium.webdriver.firefox.options import Options
 from helpers.observer_pattern import Subject
 from helpers.sensor import Sensor
 import global_var
+import settings
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(settings.BASE_LOG_LEVEL)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
+stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
 logger.addHandler(stream_handler)
 # File logger
 file_handler = logging.FileHandler(os.path.join("../logs", "ahu.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.INFO)
+file_handler.setLevel(settings.FILE_LOG_LEVEL)
 logger.addHandler(file_handler)
 
 
@@ -296,10 +298,12 @@ class ValloxAhu(Subject):
             # Check if a match is found
             if match:
                 # 2024.12.28 added cast to float
-                return float(match.group())
-            else:
-                logger.error("Could not convert string value to number")
-                return self.NO_DATA_VALUE
+                try:
+                    return float(match.group())
+                except (ValueError, TypeError, Exception) as e:
+                    logger.error(f"Could not convert to float: {e}")
+            logger.error("Could not convert string value to number")
+            return self.NO_DATA_VALUE
 
         def close_driver(self):
             logger.info("Closing driver")

@@ -7,7 +7,6 @@ from time import sleep
 import threading
 from datetime import datetime, timedelta, timezone, time
 from typing import Callable, Dict, Tuple
-
 from helpers.grafana_cloud_data_storage import GrafanaCloud
 from helpers.observer_pattern import Observer
 from helpers.price_file_manager import PriceFileManager
@@ -16,20 +15,21 @@ from devices.deviceTypes import DeviceType
 from helpers.sensor import Sensor
 from helpers.database_mngr import DbMngr
 import secrets
+import settings
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(settings.BASE_LOG_LEVEL)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(logging.INFO)
+stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
 logger.addHandler(stream_handler)
 # File logger
 file_handler = logging.FileHandler(os.path.join("../logs", "data_logger.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.INFO)
+file_handler.setLevel(settings.FILE_LOG_LEVEL)
 logger.addHandler(file_handler)
 
 

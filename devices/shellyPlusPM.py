@@ -7,22 +7,24 @@ from devices.deviceTypes import DeviceType
 from devices.mqttDevice import MqttDevice
 from devices.device import Device
 from helpers.mqtt_client import MyMqttClient
-import secrets
 from devices.shellyPlus import ShellyPlus
+import secrets
+
+import settings
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(settings.BASE_LOG_LEVEL)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(logging.INFO)
+stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
 logger.addHandler(stream_handler)
 # File logger
 file_handler = logging.FileHandler(os.path.join("../logs", "shelly_plus_log.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.INFO)
+file_handler.setLevel(settings.FILE_LOG_LEVEL)
 logger.addHandler(file_handler)
 
 def test():
