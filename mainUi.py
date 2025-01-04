@@ -93,7 +93,7 @@ class MainUIClass(Tk, Observer):
         self.set_up_ui()
         self.setup_db_logger()
         # Start MQTT client only after all devices created, so the topics are listed
-        self.mqtt_client.start(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER,
+        self.mqtt_client.start(settings.MQTT_SERVER, settings.MQTT_PORT, user=secrets.MQTT_USER,
                                psw=secrets.MQTT_PSW)
         self.update_mqtt_status()
         # Call repeated tasks after creation of UI

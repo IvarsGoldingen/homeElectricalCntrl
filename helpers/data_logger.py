@@ -6,7 +6,7 @@ import queue
 from time import sleep
 import threading
 from datetime import datetime, timedelta, timezone, time
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Tuple, List
 from helpers.grafana_cloud_data_storage import GrafanaCloud
 from helpers.observer_pattern import Observer
 from helpers.price_file_manager import PriceFileManager
@@ -16,6 +16,7 @@ from helpers.sensor import Sensor
 from helpers.database_mngr import DbMngr
 import secrets
 import settings
+from helpers.data_storage_interface import DataStoreInterface
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -52,7 +53,7 @@ class DataLogger(Observer):
         STOP_LOG = auto()
 
     def __init__(self, get_prices_method: Callable[[], Tuple[Dict, Dict]], device_list: list[Device],
-                 sensor_list: list[Sensor], periodical_log_interval_s: float = 3600.0):
+                 sensor_list: list[Sensor], periodical_log_interval_s: float = 3600.0) -> None:
         """
         :param get_prices_method: Method to call for this class to get the prices of electricity
         :param device_list: list of devices whose data is to be logged
@@ -75,7 +76,7 @@ class DataLogger(Observer):
         self.data_storage_thread = threading.Thread(target=self.data_storage_thread_method, args=(self.data_queue,))
         self.data_storage_thread.start()
 
-    def on_time_log(self):
+    def on_time_log(self) -> None:
         """
         Executes often for logging of data on exact times - on hour, on minute etc.
         """
@@ -83,18 +84,18 @@ class DataLogger(Observer):
         self.on_time_log_thread = Timer(self.ON_TIME_LOG_CHECK_INTERVAL_S, self.on_time_log)
         self.on_time_log_thread.start()
 
-    def periodical_log(self):
+    def periodical_log(self) -> None:
         self.periodical_device_log()
         self.periodical_sensor_log()
         self.periodical_log_thread = Timer(self.periodical_log_interval_s, self.periodical_log)
         self.periodical_log_thread.start()
 
-    def on_new_hour_log(self):
+    def on_new_hour_log(self) -> None:
         if self.hour_old != datetime.now().hour:
             self.hour_old = datetime.now().hour
             self.log_electricity_price_hourly(self.hour_old)
 
-    def log_electricity_price_hourly(self, current_hour: int):
+    def log_electricity_price_hourly(self, current_hour: int) -> None:
         """
         Needed because Grafana does not allow inserting of future prices
         :param current_hour:
@@ -120,10 +121,10 @@ class DataLogger(Observer):
 
 
 
-    def periodical_sensor_log(self):
+    def periodical_sensor_log(self) -> None:
         self.data_queue.put({"log_type": self.LogType.SENSOR_LOG, "data": self.sensor_list})
 
-    def periodical_device_log(self):
+    def periodical_device_log(self) -> None:
         # log device data
         logger.debug("periodical_device_log")
         # Execute this function in regular intervals
@@ -132,7 +133,7 @@ class DataLogger(Observer):
                 logger.debug(f"Device {dev.name} is on, executing periodical log")
                 self.log_device_data(dev)
 
-    def handle_subject_event(self, event_type: str, *args, **kwargs):
+    def handle_subject_event(self, event_type: str, *args, **kwargs) -> None:
         # Handle events initiated by devices this class is listening to
         if event_type == PriceFileManager.event_name_prices_changed:
             self.get_and_store_prices()
@@ -146,7 +147,7 @@ class DataLogger(Observer):
                 return
             self.handle_device_event(device_name)
 
-    def handle_device_event(self, device_name: str):
+    def handle_device_event(self, device_name: str) -> None:
         # Log data for different devices
         logger.debug(f"Handling device event name {device_name}")
         dev_to_log = self.get_device_by_name(device_name)
@@ -155,7 +156,7 @@ class DataLogger(Observer):
             return
         self.log_device_data(dev_to_log)
 
-    def log_device_data(self, dev: Device):
+    def log_device_data(self, dev: Device) -> None:
         device_type = dev.device_type
         if device_type == DeviceType.SHELLY_PLUG or \
                 device_type == DeviceType.SHELLY_PLUS or \
@@ -165,14 +166,14 @@ class DataLogger(Observer):
         else:
             logger.warning(f"Device type not recognised {device_type}")
 
-    def get_device_by_name(self, device_name):
+    def get_device_by_name(self, device_name) -> Device:
         # get device object by name
         for dev in self.device_list:
             if dev.name == device_name:
                 return dev
         return None
 
-    def get_and_store_prices(self):
+    def get_and_store_prices(self) -> None:
         # get prices of today and tomorrow and insert them in the database
         today_date = datetime.today().date()
         tomorrows_date = today_date + timedelta(days=1)
@@ -191,39 +192,49 @@ class DataLogger(Observer):
         self.data_storage_thread.join()
         logger.info("Data handling thread stopped")
 
-    def data_storage_thread_method(self, data_queue):
+    def data_storage_thread_method(self, data_queue)  -> None:
         """
         Worker running on seperate thread. handles data storage in database.
         :param data_queue: queue for data exchange with main thread
         :return:
         """
-        # Store in sqlite database
-        self.db_mngr = DbMngr()
-        # Store in grafana cloud
-        self.grafana_cloud = GrafanaCloud(endpoint=secrets.GRAFANA_ENDPOINT,
-                                 username=secrets.GRAFANA_USERNAME,
-                                 password=secrets.GRAFANA_API_TOKEN,
-                                 source_tag="home_data")
-        # List of all storage locations
-        self.storage_list = (self.db_mngr, self.grafana_cloud)
+        # List of all storages where system data should be loggged
+        storage_list = []
+        if settings.ENABLE_SQL_LITE_LOGGING:
+            # Store in sqlite database
+            self.sql_lite_storage = DbMngr()
+            storage_list.append(self.sql_lite_storage)
+        if settings.ENABLE_SQL_LITE_LOGGING:
+            # Store in grafana cloud
+            self.grafana_cloud = GrafanaCloud(endpoint=secrets.GRAFANA_ENDPOINT,
+                                              username=secrets.GRAFANA_USERNAME,
+                                              password=secrets.GRAFANA_API_TOKEN,
+                                              source_tag=settings.GRAFANA_CLOUD_SOURCE_TAG)
+            storage_list.append(self.grafana_cloud)
         run = True
         while run:
             while not data_queue.empty():
                 data = self.data_queue.get()
                 if data["log_type"] == self.LogType.SHELLY_LOG:
                     # receive data shelly plug data
-                    self.log_shelly_data(data["data"])
+                    self.log_shelly_data(data["data"], storage_list)
                 elif data["log_type"] == self.LogType.PRICE_LOG:
                     # Received price data
                     prices_dic, price_date = data["data"]
-                    self.db_mngr.insert_prices(prices_dic, price_date)
+                    for storage in storage_list:
+                        # All prices when received only logged by datastorages that allow this
+                        if isinstance(storage, DbMngr):
+                            storage.insert_prices(prices_dic, price_date)
                 elif data["log_type"] == self.LogType.PRICE_LOG_GRAFANA:
                     # New hour, log price to Grafana
                     current_price, timestamp = data["data"]
-                    self.grafana_cloud.insert_current_hour_price(current_price,timestamp)
+                    for storage in storage_list:
+                        # Log prices hour by hour if storage does not allow logging all at once
+                        if isinstance(storage, GrafanaCloud):
+                            storage.insert_current_hour_price(current_price,timestamp)
                 elif data["log_type"] == self.LogType.SENSOR_LOG:
                     sensor_list = data["data"]
-                    for storage in self.storage_list:
+                    for storage in storage_list:
                         storage.insert_sensor_list_data(sensor_list)
                 elif data["log_type"] == self.LogType.STOP_LOG:
                     # Stopping data base thread
@@ -232,27 +243,27 @@ class DataLogger(Observer):
                     log_type = data["log_type"]
                     logger.error(f"Unknown value in queue {log_type}")
             sleep(0.5)
-        # close sqlite database
-        self.db_mngr.stop()
+        # close storage locations database
+        for storage in storage_list:
+            storage.stop()
 
-    def log_shelly_data(self, dev: Device):
-        # Different shelly devices have different data available, but all data stored in single table. Fill missing data
-        # with fake value
+    def log_shelly_data(self, dev: Device, storage_list: List[DataStoreInterface]) -> None:
+        # Different shelly devices have different data available
         if dev.device_type == DeviceType.SHELLY_PLUG:
-            for storage in self.storage_list:
+            for storage in storage_list:
                 storage.insert_shelly_data(dev.name, dev.state_off_on,
                                                    dev.get_status(), dev.power, dev.energy, )
         elif dev.device_type == DeviceType.SHELLY_PLUS:
-            for storage in self.storage_list:
+            for storage in storage_list:
                 storage.insert_shelly_data(dev.name, dev.state_off_on,
                                                    dev.get_status())
         elif dev.device_type == DeviceType.SHELLY_PLUS_PM:
-            for storage in self.storage_list:
+            for storage in storage_list:
                 storage.insert_shelly_data(dev.name, dev.state_off_on,
                                                    dev.get_status(), dev.power, dev.energy,
                                                    dev.voltage, dev.current)
         elif dev.device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG:
-            for storage in self.storage_list:
+            for storage in storage_list:
                 storage.insert_shelly_data(dev.name, dev.state_off_on,
                                                    dev.get_status())
 

@@ -32,7 +32,7 @@ def test():
     # client.add_listen_topic("shellyplus1-441793ab3fb4/#", test_cb)
     client.add_listen_topic("shellyplus1pm-d48afc417d58/#", test_cb)
     # client.add_listen_topic("shellies/shellyplug-s-80646F840029/#", test_cb)
-    client.start(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
+    client.start(settings.MQTT_SERVER, settings.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
     device_bool = False
     test_cntr = 0
     try:
