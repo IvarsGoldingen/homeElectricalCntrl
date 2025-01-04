@@ -3,12 +3,12 @@ Application for controlling home automation:
 *Control and monitoring of MQTT devices
 *Creating schedules according to electricity price
 """
-
 import os
 from threading import Timer
 import subprocess
 from tkinter import Tk, Label, Button, Frame
 import logging
+import global_var
 from custom_devices.vallux_ahu import ValloxAhu
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.shellyPlus import ShellyPlus
@@ -50,12 +50,13 @@ file_handler.setLevel(settings.FILE_LOG_LEVEL)
 logger.addHandler(file_handler)
 
 
-def main():
+def main() -> None:
+    # App started as object initiated
     main = MainUIClass()
-
 
 # Mainclass extends tkinter for creation of UI
 class MainUIClass(Tk, Observer):
+    # How often to log system values to database or other storage location
     PERIODICAL_LOG_INTERVAL_S = 60
     # How often call mainloop
     MAINLOOP_OTHER_INTERVAL_MS = 100
@@ -72,13 +73,13 @@ class MainUIClass(Tk, Observer):
     # For determining if checkbox of today or tomorrow pressed
     KEY_TODAY = 1
     KEY_TOMORROW = 2
-    DUMMY_PRICE_VALUE = -99.99
+    DUMMY_PRICE_VALUE = global_var.NO_DATA_VALUE
     # Price file location
-    PRICE_FILE_LOCATION = "C:\\py_related\\home_el_cntrl\\price_lists"
+    PRICE_FILE_LOCATION = settings.PRICE_FILE_LOCATION
     # display price per kWh, default is per MWh
     DISPLAY_PRICE_PER_KWH = True
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         logger.info("Program started")
         # Threads for repeated tasks
@@ -86,12 +87,15 @@ class MainUIClass(Tk, Observer):
         self.mqtt_client = MyMqttClient()
         # UI displays MQTT status, subscribe to status changes
         self.mqtt_client.register(self, MyMqttClient.event_name_status_change)
+        # Object responsible for getting and storing electricity prices
         self.price_mngr = PriceFileManager(self.PRICE_FILE_LOCATION)
         self.price_mngr.register(self, PriceFileManager.event_name_prices_changed)
+        # Setup devices of the system
         self.setup_devices()
+        # Setup schedules that will control the devices
         self.setup_schedules()
         self.set_up_ui()
-        self.setup_db_logger()
+        self.setup_data_logger()
         # Start MQTT client only after all devices created, so the topics are listed
         self.mqtt_client.start(settings.MQTT_SERVER, settings.MQTT_PORT, user=secrets.MQTT_USER,
                                psw=secrets.MQTT_PSW)
@@ -106,42 +110,48 @@ class MainUIClass(Tk, Observer):
         except KeyboardInterrupt:
             logger.info("KeyboardInterrupt")
 
-    def setup_db_logger(self):
+    def setup_data_logger(self) -> None:
+        # List of Sensor objects  whose values will be stored
         all_sensors = []
         if settings.AHU_ENABLED:
+            # If ahu enabled get all sensors from it
             ahu_sensors = self.ahu.get_sensor_list()
             all_sensors.extend(ahu_sensors)
-        self.db_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
-                                    device_list=self.dev_list, sensor_list=all_sensors,
-                                    periodical_log_interval_s=self.PERIODICAL_LOG_INTERVAL_S)
-        self.price_mngr.register(self.db_logger, PriceFileManager.event_name_prices_changed)
+        self.data_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
+                                      device_list=self.dev_list,
+                                      sensor_list=all_sensors,
+                                      periodical_log_interval_s=self.PERIODICAL_LOG_INTERVAL_S)
+        # Notify data loggger when new prices arrive
+        self.price_mngr.register(self.data_logger, PriceFileManager.event_name_prices_changed)
         for dev in self.dev_list:
             if dev.device_type == DeviceType.SHELLY_PLUG or \
                     dev.device_type == DeviceType.SHELLY_PLUS or \
                     dev.device_type == DeviceType.SHELLY_PLUS_PM or \
                     dev.device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG:
-                dev.register(self.db_logger, Device.event_name_actual_state_changed)
+                # Register state changes for devices
+                dev.register(self.data_logger, Device.event_name_actual_state_changed)
             else:
                 logger.error(f"Logging not implemented for {dev.device_type} in method setup_db_logger")
 
-    def mainloop_user(self):
-        # Not used, instead Timer from Threading used
+    def mainloop_user(self) -> None:
+        # TKinter loop not used, instead Timer from Threading used
         # Start the loop again after delay
         self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)
 
-    def mqtt_threaded_loop(self):
+    def mqtt_threaded_loop(self) -> None:
+        # Periodically call mqtt_client loop
         self.mqtt_client.loop()
         self.mqtt_thread = Timer(self.LOOP_MQTT_INTERVAL_S, self.mqtt_threaded_loop)
         self.mqtt_thread.start()
 
-    def price_mngr_threaded_loop(self):
-        # Execute this same function in regular intervals
+    def price_mngr_threaded_loop(self) -> None:
+        # Periodically call price manager loop - checks for prices
         self.price_mngr.loop()
         self.price_mngr_thread = Timer(self.LOOP_PRICE_MNGR_INTERVAL_S, self.price_mngr_threaded_loop)
         self.price_mngr_thread.start()
 
-    def schedule_threaded_loop(self):
-        # Execute this same function in regular intervals
+    def schedule_threaded_loop(self) -> None:
+        # Schedule related loops
         self.schedule_2days.loop()
         self.auto_sch_creator.loop()
         self.alarm_clock.loop()
@@ -149,8 +159,8 @@ class MainUIClass(Tk, Observer):
         self.schedule_thread = Timer(self.LOOP_SCHEDULE_INTERVAL_S, self.schedule_threaded_loop)
         self.schedule_thread.start()
 
-    def device_threaded_loop(self):
-        # Execute this same function in regular intervals
+    def device_threaded_loop(self) -> None:
+        # Device related loops
         for dev in self.dev_list:
             dev.loop()
         if settings.AHU_ENABLED:
@@ -158,37 +168,40 @@ class MainUIClass(Tk, Observer):
         self.device_thread = Timer(self.LOOP_DEVICES_INTERVAL_S, self.device_threaded_loop)
         self.device_thread.start()
 
-    def handle_subject_event(self, event_type: str, *args, **kwargs):
-        logger.debug(f"Received event {event_type}")
+    def handle_subject_event(self, event_type: str, *args, **kwargs) -> None:
+        # Method for handling subject events. Observer pattern.
+        logger.debug(f"Main received event: {event_type}")
         if event_type == PriceFileManager.event_name_prices_changed:
             self.populate_ui_with_el_prices()
         elif event_type == MyMqttClient.event_name_status_change:
             self.update_mqtt_status()
 
-    def update_mqtt_status(self):
-        """
-        Update MQTT client status in the UI
-        :return:
-        """
+    def update_mqtt_status(self) -> None:
+        # Update MQTT client status in the UI
         txt_color = "green" if self.mqtt_client.status == MyMqttClient.MqttClientThread.STATUS_CONNECTED else "red"
         new_text = self.mqtt_client.status_strings.get(self.mqtt_client.status, "UNKNOWN")
         self.lbl_status.config(text=new_text, fg=txt_color)
 
-    def setup_schedules(self):
+    def setup_schedules(self) -> None:
+        # Setup objects that will be responsible for controlling devices
+        # Hourly schedule for today and tomorrow
         self.schedule_2days = HourlySchedule2days("2 DAY SCHEDULE")
+        # Assign devices that will be controlled by 2 day schedule
         self.schedule_2days.add_to_device_list(self.plug1)
+        # Object that will plan the 2 day schedule
         self.auto_sch_creator = AutoScheduleCreator(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                     hourly_schedule=self.schedule_2days)
+        # Schedule object that can activate a device on time - for alarm clock
         self.alarm_clock = DailyTimedSchedule(name="Alarm clock", hour_on=7, minute_on=00, on_time_min=15)
+        # Assign devices that will be controlled by alarm_clock
         self.alarm_clock.add_device(self.smart_relay1)
+        # Schedule object that can activate a device on time - for christams lights
         self.christmas_lights = DailyTimedSchedule(name="Christmas lights", hour_on=18, minute_on=00, on_time_min=240)
+        # Assign devices that will be controlled by christmas_lights
         self.christmas_lights.add_device(self.plug2)
 
-    def setup_devices(self):
-        """
-        Setup automation devices
-        :return:
-        """
+    def setup_devices(self) -> None:
+        # Setup automation devices
         self.dev_list = []
         self.plug1 = ShellyPlug(name="Plug 1",
                                 mqtt_publish=self.mqtt_client.publish,
@@ -220,17 +233,20 @@ class MainUIClass(Tk, Observer):
         if settings.AHU_ENABLED:
             self.ahu = ValloxAhu(ip="http://192.168.94.117/")
 
-    def set_up_ui(self):
+    def set_up_ui(self) -> None:
         # Set up user interface
         self.protocol("WM_DELETE_WINDOW", self.save_and_finish)
         self.title('Home control')
         self.prepare_ui_elements()
         self.place_ui_elements()
+        # Start TKinter inherited inbuilt loop
         self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)
 
-    def populate_ui_with_el_prices(self):
-        "Set electrical price data in the user interface"
+    def populate_ui_with_el_prices(self) -> None:
+        # Set electrical price data in the user interface
+        # Values received as dictionaries, widget needs a list
         prices_today, prices_tomorrow = self.price_mngr.get_prices_today_tomorrow()
+        # Have dummy values ready for items that are not received
         price_list_today, price_list_tomorrow = [self.DUMMY_PRICE_VALUE] * 24, [self.DUMMY_PRICE_VALUE] * 24
         for hour, value in prices_today.items():
             price_list_today[hour] = value
@@ -238,18 +254,16 @@ class MainUIClass(Tk, Observer):
             price_list_tomorrow[hour] = value
         self.schedule_widget.add_price_to_hourly_checkbox_label(price_list_today, price_list_tomorrow)
 
-    def prepare_ui_elements(self):
-        """
-        Create UI elements
-        """
+    def prepare_ui_elements(self) -> None:
+        # Create UI elements
         self.lbl_status = Label(self, text='MQTT STATUS')
         # Buttons for debuggin or extra features
         self.frame_extra_btns = Frame(self)
         self.btn_1 = Button(self.frame_extra_btns, text='OPEN PRICE FILE FOLDER',
                             command=self.open_price_file_folder, width=self.BTN_WIDTH)
-        self.btn_2 = Button(self.frame_extra_btns, text='TEST 2', command=self.test_btn_2, width=self.BTN_WIDTH)
+        self.btn_2 = Button(self.frame_extra_btns, text='TEST 2', command=self.test_btn, width=self.BTN_WIDTH)
         self.frame_devices = Frame(self)
-        # Place all widgets in one frame
+        # Store all widgets in a list to place in one TKinter frame
         self.dev_widgets = []
         for dev in self.dev_list:
             # For each device type create the apropriate widget and register listeners to those widgets
@@ -282,7 +296,8 @@ class MainUIClass(Tk, Observer):
             self.ahu_widget = AhuWidget(parent=self.frame_devices, ahu=self.ahu)
             self.ahu.register(self.ahu_widget, ValloxAhu.event_name_new_data)
         # Create schedule widgets and register them as listeners for desired schedules
-        self.schedule_widget = Schedule2DaysWidget(parent=self, schedule=self.schedule_2days,
+        self.schedule_widget = Schedule2DaysWidget(parent=self,
+                                                   schedule=self.schedule_2days,
                                                    display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)
@@ -301,11 +316,9 @@ class MainUIClass(Tk, Observer):
         self.christmas_lights.register(self.christmas_lights_widget,
                                        DailyTimedSchedule.event_name_new_device_associated)
 
-    def place_ui_elements(self):
-        """
-        Place created UI elements
-        """
-        # btns grid
+    def place_ui_elements(self) -> None:
+        # Place created UI elements
+        # Buttons grid
         self.btn_1.grid(row=0, column=0)
         self.btn_2.grid(row=0, column=1)
         # Main grid
@@ -313,8 +326,10 @@ class MainUIClass(Tk, Observer):
         self.frame_extra_btns.grid(row=1, column=0)
         self.frame_devices.grid(row=2, column=0)
         last_socket_widget = 0
+        # Place device widgets in frame
         for i, widget in enumerate(self.dev_widgets):
             widget.grid(row=0, column=i)
+            # Save location so next free position is known
             last_socket_widget += 1
         if settings.AHU_ENABLED:
             self.ahu_widget.grid(row=0, column=last_socket_widget)
@@ -324,13 +339,13 @@ class MainUIClass(Tk, Observer):
         self.alarm_clock_widget.grid(row=0, column=1)
         self.christmas_lights_widget.grid(row=0, column=2)
 
-    def open_price_file_folder(self):
+    def open_price_file_folder(self) -> None:
         subprocess.Popen(['explorer', self.PRICE_FILE_LOCATION])
 
-    def test_btn_2(self):
+    def test_btn(self) -> None:
         logger.info("Test btn 2")
 
-    def save_and_finish(self):
+    def save_and_finish(self) -> None:
         # Called on close of UI
         logger.info("UI closed")
         # Stop repeated tasks
@@ -339,7 +354,7 @@ class MainUIClass(Tk, Observer):
         self.price_mngr_thread.cancel()
         self.mqtt_thread.cancel()
         # Stop DB manager
-        self.db_logger.stop()
+        self.data_logger.stop()
         # Stpo MQTT client
         self.mqtt_client.stop()
         if settings.AHU_ENABLED:
