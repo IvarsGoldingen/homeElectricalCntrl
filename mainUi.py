@@ -12,7 +12,6 @@ import global_var
 from custom_devices.vallux_ahu import ValloxAhu
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.shellyPlus import ShellyPlus
-from devices.shellyPlusPM import ShellyPlusPM
 from devices.shellyPlugUrlControlled import URLControlledShellyPlug
 from devices.device import Device
 from devices.deviceTypes import DeviceType
@@ -31,6 +30,7 @@ from custom_tk_widgets.daily_timed_schedule_widget import DailyTimedScheduleCrea
 from custom_tk_widgets.ahu_widget import AhuWidget
 from helpers.observer_pattern import Observer
 from helpers.data_logger import DataLogger
+from system_setup.device_setup import get_device_list_from_file
 import secrets
 import settings
 
@@ -183,46 +183,31 @@ class MainUIClass(Tk, Observer):
         self.lbl_status.config(text=new_text, fg=txt_color)
 
     def setup_schedules(self) -> None:
+        # TODO: setup schedules from system file
         # Setup objects that will be responsible for controlling devices
         # Hourly schedule for today and tomorrow
         self.schedule_2days = HourlySchedule2days("2 DAY SCHEDULE")
         # Assign devices that will be controlled by 2 day schedule
-        self.schedule_2days.add_to_device_list(self.plug1)
+        plug_1 = next((dev for dev in self.dev_list if dev.name == "Plug 1"), None)
+        self.schedule_2days.add_to_device_list(plug_1)
         # Object that will plan the 2 day schedule
         self.auto_sch_creator = AutoScheduleCreator(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                     hourly_schedule=self.schedule_2days)
         # Schedule object that can activate a device on time - for alarm clock
         self.alarm_clock = DailyTimedSchedule(name="Alarm clock", hour_on=7, minute_on=00, on_time_min=15)
         # Assign devices that will be controlled by alarm_clock
-        self.alarm_clock.add_device(self.smart_relay1)
+        # self.alarm_clock.add_device(self.smart_relay1)
         # Schedule object that can activate a device on time - for christams lights
         self.christmas_lights = DailyTimedSchedule(name="Christmas lights", hour_on=18, minute_on=00, on_time_min=240)
         # Assign devices that will be controlled by christmas_lights
-        self.christmas_lights.add_device(self.plug2)
+        plug_2 = next((dev for dev in self.dev_list if dev.name == "Plug 2"), None)
+        self.christmas_lights.add_device(plug_2)
 
     def setup_devices(self) -> None:
         # Setup automation devices
-        self.dev_list = []
-        self.plug1 = ShellyPlug(name="Plug 1",
-                                mqtt_publish=self.mqtt_client.publish,
-                                plug_id="shellyplug-s-80646F840029")
-        self.plug2 = ShellyPlug(name="Plug 2",
-                                mqtt_publish=self.mqtt_client.publish,
-                                plug_id="shellyplug-s-C8C9A3B8E92E")
-        self.smart_relay1 = ShellyPlus(name="Relay 1",
-                                       mqtt_publish=self.mqtt_client.publish,
-                                       plug_id="shellyplus1-441793ab3fb4")
-        self.smart_relay2 = ShellyPlusPM(name="Relay 2",
-                                         mqtt_publish=self.mqtt_client.publish,
-                                         plug_id="shellyplus1pm-d48afc417d58")
-        self.plug3_url = URLControlledShellyPlug(name="URL plug",
-                                                 url_on="http://172.31.0.246/relay/0?turn=on",
-                                                 url_off="http://172.31.0.246/relay/0?turn=off")
-        self.dev_list.append(self.plug1)
-        self.dev_list.append(self.plug2)
-        self.dev_list.append(self.smart_relay1)
-        self.dev_list.append(self.smart_relay2)
-        self.dev_list.append(self.plug3_url)
+        self.dev_list = get_device_list_from_file(mqtt_publish_method=self.mqtt_client.publish,
+                                                  file_path=os.path.join(settings.DEV_CONFIG_FILE_LOCATION,
+                                                                         settings.DEV_CONFIG_FILE_NAME))
         for dev in self.dev_list:
             if dev.device_type == DeviceType.SHELLY_PLUG or \
                     dev.device_type == DeviceType.SHELLY_PLUS or \

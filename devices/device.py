@@ -73,6 +73,9 @@ class Device(DeviceSubject, StateSaver):
         self.auto_man = False
         self.load_state()
 
+    def __str__(self):
+        return f"{self.device_type.name} with name {self.name}"
+
     def save_state(self):
         state_to_save = {
             "auto_man": self.auto_man,

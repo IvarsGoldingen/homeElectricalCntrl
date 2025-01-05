@@ -105,6 +105,8 @@ class GrafanaCloud(DataStoreInterface):
         return f",{metric_name}={metric_value:.2f}"
 
     def insert_sensor_list_data(self, sensor_list: list[Sensor]):
+        if not sensor_list:
+            return
         payload = self._get_payload_from_sensor_data(sensor_list)
         self._post_to_cloud(payload)
 
