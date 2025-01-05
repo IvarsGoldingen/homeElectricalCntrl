@@ -17,3 +17,12 @@ AHU_ENABLED = False
 ENABLE_SQL_LITE_LOGGING = True
 ENABLE_GRAFANA_CLOUD_LOGGING = True
 GRAFANA_CLOUD_SOURCE_TAG = "home_data"
+
+# Mqtt settings
+MQTT_SERVER = "0.0.0.0"
+MQTT_PORT = 1883
+
+# Other settings
+PRICE_FILE_LOCATION = "C:\\py_related\\home_el_cntrl\\price_lists"
+DEV_CONFIG_FILE_LOCATION = "C:\\py_related\\home_el_cntrl\\sys_config"
+DEV_CONFIG_FILE_NAME = "devices.cnf"
