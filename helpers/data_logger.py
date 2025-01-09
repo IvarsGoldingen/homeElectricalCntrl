@@ -212,37 +212,41 @@ class DataLogger(Observer):
                                               source_tag=settings.GRAFANA_CLOUD_SOURCE_TAG)
             storage_list.append(self.grafana_cloud)
         run = True
-        while run:
-            while not data_queue.empty():
-                data = self.data_queue.get()
-                if data["log_type"] == self.LogType.SHELLY_LOG:
-                    # receive data shelly plug data
-                    self.log_shelly_data(data["data"], storage_list)
-                elif data["log_type"] == self.LogType.PRICE_LOG:
-                    # Received price data
-                    prices_dic, price_date = data["data"]
-                    for storage in storage_list:
-                        # All prices when received only logged by datastorages that allow this
-                        if isinstance(storage, DbMngr):
-                            storage.insert_prices(prices_dic, price_date)
-                elif data["log_type"] == self.LogType.PRICE_LOG_GRAFANA:
-                    # New hour, log price to Grafana
-                    current_price, timestamp = data["data"]
-                    for storage in storage_list:
-                        # Log prices hour by hour if storage does not allow logging all at once
-                        if isinstance(storage, GrafanaCloud):
-                            storage.insert_current_hour_price(current_price,timestamp)
-                elif data["log_type"] == self.LogType.SENSOR_LOG:
-                    sensor_list = data["data"]
-                    for storage in storage_list:
-                        storage.insert_sensor_list_data(sensor_list)
-                elif data["log_type"] == self.LogType.STOP_LOG:
-                    # Stopping data base thread
-                    run = False
-                else:
-                    log_type = data["log_type"]
-                    logger.error(f"Unknown value in queue {log_type}")
-            sleep(0.5)
+        try:
+            while run:
+                while not data_queue.empty():
+                    data = self.data_queue.get()
+                    if data["log_type"] == self.LogType.SHELLY_LOG:
+                        # receive data shelly plug data
+                        self.log_shelly_data(data["data"], storage_list)
+                    elif data["log_type"] == self.LogType.PRICE_LOG:
+                        # Received price data
+                        prices_dic, price_date = data["data"]
+                        for storage in storage_list:
+                            # All prices when received only logged by datastorages that allow this
+                            if isinstance(storage, DbMngr):
+                                storage.insert_prices(prices_dic, price_date)
+                    elif data["log_type"] == self.LogType.PRICE_LOG_GRAFANA:
+                        # New hour, log price to Grafana
+                        current_price, timestamp = data["data"]
+                        for storage in storage_list:
+                            # Log prices hour by hour if storage does not allow logging all at once
+                            if isinstance(storage, GrafanaCloud):
+                                storage.insert_current_hour_price(current_price,timestamp)
+                    elif data["log_type"] == self.LogType.SENSOR_LOG:
+                        sensor_list = data["data"]
+                        for storage in storage_list:
+                            storage.insert_sensor_list_data(sensor_list)
+                    elif data["log_type"] == self.LogType.STOP_LOG:
+                        # Stopping data base thread
+                        run = False
+                    else:
+                        log_type = data["log_type"]
+                        logger.error(f"Unknown value in queue {log_type}")
+                sleep(0.5)
+        except Exception as e:
+            logger.error("Error in data log loop")
+            logger.error(e)
         # close storage locations database
         for storage in storage_list:
             storage.stop()
