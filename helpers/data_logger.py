@@ -212,9 +212,9 @@ class DataLogger(Observer):
                                               source_tag=settings.GRAFANA_CLOUD_SOURCE_TAG)
             storage_list.append(self.grafana_cloud)
         run = True
-        try:
-            while run:
-                while not data_queue.empty():
+        while run:
+            while not data_queue.empty():
+                try:
                     data = self.data_queue.get()
                     if data["log_type"] == self.LogType.SHELLY_LOG:
                         # receive data shelly plug data
@@ -243,10 +243,10 @@ class DataLogger(Observer):
                     else:
                         log_type = data["log_type"]
                         logger.error(f"Unknown value in queue {log_type}")
-                sleep(0.5)
-        except Exception as e:
-            logger.error("Error in data log loop")
-            logger.error(e)
+                except Exception as e:
+                    logger.error("Error in data log loop")
+                    logger.error(e)
+            sleep(0.5)
         # close storage locations database
         for storage in storage_list:
             storage.stop()
