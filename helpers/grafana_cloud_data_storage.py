@@ -19,7 +19,7 @@ logger.addHandler(stream_handler)
 # File logger
 file_handler = logging.FileHandler(os.path.join("../logs", "grafana.log"))
 file_handler.setFormatter(log_formatter)
-file_handler.setLevel(settings.FILE_LOG_LEVEL)
+file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 
 
@@ -53,6 +53,7 @@ class GrafanaCloud(DataStoreInterface):
 
 
     def __init__(self, endpoint: str, username: str, password: str, source_tag: str) -> None:
+        logger.debug("Init GrafanaCloud")
         self._url = endpoint
         self._username = username
         self._password = password
@@ -74,8 +75,11 @@ class GrafanaCloud(DataStoreInterface):
         :param current:
         :return:
         """
+        logger.debug("Inserting shelly data")
         payload = self._get_payload_from_shelly_data(name, off_on, status, power, energy, voltage, current)
+        logger.debug(f"Shelly data payload {payload}")
         self._post_to_cloud(payload)
+        logger.debug("Inserting shelly data DONE")
 
     def _get_payload_from_shelly_data(self, name: str, off_on: bool, status: int,
                                       power: float = DataStoreInterface.NO_DATA_VALUE,
@@ -105,10 +109,14 @@ class GrafanaCloud(DataStoreInterface):
         return f",{metric_name}={metric_value:.2f}"
 
     def insert_sensor_list_data(self, sensor_list: list[Sensor]):
+        logger.debug("Inserting sensor data")
         if not sensor_list:
+            logger.debug("No sensor data to insert")
             return
         payload = self._get_payload_from_sensor_data(sensor_list)
+        logger.debug(f"Got sensor data payload {payload}")
         self._post_to_cloud(payload)
+        logger.debug("Inserting sensor data done")
 
     def _get_payload_from_sensor_data(self, sensor_list: list[Sensor]) -> str:
         """
@@ -140,8 +148,11 @@ class GrafanaCloud(DataStoreInterface):
         return payload
 
     def insert_current_hour_price(self, current_price: float, timestamp: datetime):
+        logger.debug("Inserting current hour price data")
         payload = self._get_payload_from_hourly_price(current_price,timestamp)
+        logger.debug(f"Got price data payload {payload}")
         self._post_to_cloud(payload)
+        logger.debug("Inserting current hour price data done")
 
     def _get_payload_from_hourly_price(self, current_price: float, timestamp: datetime) -> str:
         """
@@ -205,6 +216,7 @@ class GrafanaCloud(DataStoreInterface):
         pass
 
     def insert_prices(self, prices: dict, date: datetime.date):
+        logger.debug(f"Insert_prices method call")
         raise NotImplementedError("Grafana cloud does not implement this method, use insert_current_hour_price instead")
 
 if __name__ == "__main__":
