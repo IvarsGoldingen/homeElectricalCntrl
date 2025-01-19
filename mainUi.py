@@ -183,27 +183,6 @@ class MainUIClass(Tk, Observer):
         self.lbl_status.config(text=new_text, fg=txt_color)
 
     def setup_schedules(self) -> None:
-        """
-        # TODO: setup schedules from system file
-        # Setup objects that will be responsible for controlling devices
-        # Hourly schedule for today and tomorrow
-        self.schedule_2days = HourlySchedule2days("2 DAY SCHEDULE")
-        # Assign devices that will be controlled by 2 day schedule
-        plug_1 = next((dev for dev in self.dev_list if dev.name == "Plug 1"), None)
-        self.schedule_2days.add_to_device_list(plug_1)
-        # Object that will plan the 2 day schedule
-        self.auto_sch_creator = AutoScheduleCreator(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
-                                                    hourly_schedule=self.schedule_2days)
-        # Schedule object that can activate a device on time - for alarm clock
-        self.alarm_clock = DailyTimedSchedule(name="Alarm clock", hour_on=7, minute_on=00, on_time_min=15)
-        # Assign devices that will be controlled by alarm_clock
-        # self.alarm_clock.add_device(self.smart_relay1)
-        # Schedule object that can activate a device on time - for christams lights
-        self.christmas_lights = DailyTimedSchedule(name="Christmas lights", hour_on=18, minute_on=00, on_time_min=240)
-        # Assign devices that will be controlled by christmas_lights
-        plug_2 = next((dev for dev in self.dev_list if dev.name == "Plug 2"), None)
-        self.christmas_lights.add_device(plug_2)
-        """
         self.schedule_list = get_schedule_list_from_file(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                          dev_list=self.dev_list,
                                                          file_path=os.path.join(settings.SCH_CONFIG_FILE_LOCATION,# type: ignore
@@ -359,12 +338,6 @@ class MainUIClass(Tk, Observer):
                 # Save location so next free position is known
                 last_small_sch_widget += 1
         self.frame_widgets_bottom.grid(row=row_to_use, column=0)
-        """
-        self.schedule_widget.grid(row=3, column=0)
-        self.auto_schedule_creator_widget.grid(row=0, column=0)
-        self.alarm_clock_widget.grid(row=0, column=1)
-        self.christmas_lights_widget.grid(row=0, column=2)
-        """
 
     def open_price_file_folder(self) -> None:
         subprocess.Popen(['explorer', self.PRICE_FILE_LOCATION])
