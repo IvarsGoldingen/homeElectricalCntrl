@@ -31,6 +31,7 @@ from custom_tk_widgets.ahu_widget import AhuWidget
 from helpers.observer_pattern import Observer
 from helpers.data_logger import DataLogger
 from system_setup.device_setup import get_device_list_from_file
+from system_setup.schedule_setup import get_schedule_list_from_file
 import secrets
 import settings
 
@@ -117,6 +118,7 @@ class MainUIClass(Tk, Observer):
             # If ahu enabled get all sensors from it
             ahu_sensors = self.ahu.get_sensor_list()
             all_sensors.extend(ahu_sensors)
+        # noinspection PyAttributeOutsideInit
         self.data_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                       device_list=self.dev_list,
                                       sensor_list=all_sensors,
@@ -152,10 +154,8 @@ class MainUIClass(Tk, Observer):
 
     def schedule_threaded_loop(self) -> None:
         # Schedule related loops
-        self.schedule_2days.loop()
-        self.auto_sch_creator.loop()
-        self.alarm_clock.loop()
-        self.christmas_lights.loop()
+        for sch in self.schedule_list:
+            sch.loop()
         self.schedule_thread = Timer(self.LOOP_SCHEDULE_INTERVAL_S, self.schedule_threaded_loop)
         self.schedule_thread.start()
 
@@ -183,6 +183,7 @@ class MainUIClass(Tk, Observer):
         self.lbl_status.config(text=new_text, fg=txt_color)
 
     def setup_schedules(self) -> None:
+        """
         # TODO: setup schedules from system file
         # Setup objects that will be responsible for controlling devices
         # Hourly schedule for today and tomorrow
@@ -202,11 +203,17 @@ class MainUIClass(Tk, Observer):
         # Assign devices that will be controlled by christmas_lights
         plug_2 = next((dev for dev in self.dev_list if dev.name == "Plug 2"), None)
         self.christmas_lights.add_device(plug_2)
+        """
+        self.schedule_list = get_schedule_list_from_file(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
+                                                         dev_list=self.dev_list,
+                                                         file_path=os.path.join(settings.SCH_CONFIG_FILE_LOCATION,# type: ignore
+                                                                         settings.SCH_CONFIG_FILE_NAME))
 
+    # noinspection PyAttributeOutsideInit
     def setup_devices(self) -> None:
         # Setup automation devices
         self.dev_list = get_device_list_from_file(mqtt_publish_method=self.mqtt_client.publish,
-                                                  file_path=os.path.join(settings.DEV_CONFIG_FILE_LOCATION,
+                                                  file_path=os.path.join(settings.DEV_CONFIG_FILE_LOCATION,# type: ignore
                                                                          settings.DEV_CONFIG_FILE_NAME))
         for dev in self.dev_list:
             if dev.device_type == DeviceType.SHELLY_PLUG or \
@@ -214,7 +221,7 @@ class MainUIClass(Tk, Observer):
                     dev.device_type == DeviceType.SHELLY_PLUS_PM:
                 # if device is an MQTT device, register the topic that should be subscribed to and a callback
                 # for receiving messages from that topic
-                self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)
+                self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)# type: ignore
         if settings.AHU_ENABLED:
             self.ahu = ValloxAhu(ip="http://192.168.94.117/")
 
@@ -237,8 +244,14 @@ class MainUIClass(Tk, Observer):
             price_list_today[hour] = value
         for hour, value in prices_tomorrow.items():
             price_list_tomorrow[hour] = value
-        self.schedule_widget.add_price_to_hourly_checkbox_label(price_list_today, price_list_tomorrow)
+        # TODO: Handle getting the widget better - add class attribute associate prices or something
+        # Find 2 day schedule which should show electricity prices
+        schedule_2day_w_prices = next(sch_widget for sch_widget in self.sch_widgets if isinstance(sch_widget, Schedule2DaysWidget))
+        # Set the prices on the schedule so they are visible in the UI
+        schedule_2day_w_prices.add_price_to_hourly_checkbox_label(price_list_today, price_list_tomorrow)
 
+
+    # noinspection PyAttributeOutsideInit
     def prepare_ui_elements(self) -> None:
         # Create UI elements
         self.lbl_status = Label(self, text='MQTT STATUS')
@@ -247,68 +260,105 @@ class MainUIClass(Tk, Observer):
         self.btn_1 = Button(self.frame_extra_btns, text='OPEN PRICE FILE FOLDER',
                             command=self.open_price_file_folder, width=self.BTN_WIDTH)
         self.btn_2 = Button(self.frame_extra_btns, text='TEST 2', command=self.test_btn, width=self.BTN_WIDTH)
+        self.setup_device_widgets_from_list()
+        if settings.AHU_ENABLED:
+            # Ahu widget
+            self.ahu_widget = AhuWidget(parent=self.frame_devices, ahu=self.ahu)
+            self.ahu.register(self.ahu_widget, ValloxAhu.event_name_new_data)
+        self.setup_schedule_widgets_from_list()
+
+    # noinspection PyAttributeOutsideInit
+    def setup_device_widgets_from_list(self):
         self.frame_devices = Frame(self)
         # Store all widgets in a list to place in one TKinter frame
         self.dev_widgets = []
         for dev in self.dev_list:
             # For each device type create the apropriate widget and register listeners to those widgets
             if dev.device_type == DeviceType.SHELLY_PLUG:
-                shelly_widget = ShellyPlugWidget(parent=self.frame_devices, device=dev)
+                shelly_widget = ShellyPlugWidget(parent=self.frame_devices, device=dev) # type: ignore
                 dev.register(shelly_widget, Device.event_name_status_changed)
                 dev.register(shelly_widget, ShellyPlug.event_name_new_extra_data)
                 self.dev_widgets.append(shelly_widget)
             elif dev.device_type == DeviceType.SHELLY_PLUS:
-                shelly_plus_widget = ShellyPlusWidget(parent=self.frame_devices, device=dev)
+                shelly_plus_widget = ShellyPlusWidget(parent=self.frame_devices, device=dev) # type: ignore
                 dev.register(shelly_plus_widget, Device.event_name_status_changed)
                 dev.register(shelly_plus_widget, ShellyPlus.event_name_new_extra_data)
                 dev.register(shelly_plus_widget, ShellyPlus.event_name_input_state_change)
                 self.dev_widgets.append(shelly_plus_widget)
             elif dev.device_type == DeviceType.SHELLY_PLUS_PM:
-                shelly_plus_pm_widget = ShellyPlusPmWidget(parent=self.frame_devices, device=dev)
+                shelly_plus_pm_widget = ShellyPlusPmWidget(parent=self.frame_devices, device=dev) # type: ignore
                 dev.register(shelly_plus_pm_widget, Device.event_name_status_changed)
                 dev.register(shelly_plus_pm_widget, ShellyPlus.event_name_new_extra_data)
                 dev.register(shelly_plus_pm_widget, ShellyPlus.event_name_input_state_change)
                 self.dev_widgets.append(shelly_plus_pm_widget)
             elif dev.device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG:
-                shelly_url_widget = ShellyPlugUrlWidget(parent=self.frame_devices, device=dev)
+                shelly_url_widget = ShellyPlugUrlWidget(parent=self.frame_devices, device=dev) # type: ignore
                 dev.register(shelly_url_widget, Device.event_name_status_changed)
                 dev.register(shelly_url_widget, URLControlledShellyPlug.event_name_new_extra_data)
                 self.dev_widgets.append(shelly_url_widget)
             else:
                 logger.warning("Device list contains device without widget associated to its type")
-        if settings.AHU_ENABLED:
-            # Ahu widget
-            self.ahu_widget = AhuWidget(parent=self.frame_devices, ahu=self.ahu)
-            self.ahu.register(self.ahu_widget, ValloxAhu.event_name_new_data)
+
+    # noinspection PyAttributeOutsideInit
+    def setup_schedule_widgets_from_list(self):
         # Create schedule widgets and register them as listeners for desired schedules
+        self.sch_widgets = []
+        self.frame_widgets_bottom = Frame(self)
+        for sch in self.schedule_list:
+            if isinstance(sch, HourlySchedule2days):
+                hourly_2day_widget = Schedule2DaysWidget(parent=self,
+                                                   schedule=sch,
+                                                   display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
+                sch.register(hourly_2day_widget, HourlySchedule2days.event_name_schedule_change)
+                sch.register(hourly_2day_widget, HourlySchedule2days.event_name_new_device_associated)
+                sch.register(hourly_2day_widget, HourlySchedule2days.event_name_hour_changed)
+                self.sch_widgets.append(hourly_2day_widget)
+            elif isinstance(sch, AutoScheduleCreator):
+                auto_sch_creator = AutoHourlyScheduleCreatorWidget(parent=self.frame_widgets_bottom,
+                                                                    auto_schedule_creator=sch,
+                                                                    display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
+                self.sch_widgets.append(auto_sch_creator)
+            elif isinstance(sch, DailyTimedSchedule):
+                daily_timed_sch = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
+                                                                  sch=sch)
+                sch.register(daily_timed_sch, DailyTimedSchedule.event_name_schedule_change)
+                sch.register(daily_timed_sch, DailyTimedSchedule.event_name_new_device_associated)
+                self.sch_widgets.append(daily_timed_sch)
+            else:
+                logger.error("Unknown schedule in schedule list")
+                raise Exception("Unknown schedule in schedule list")
+
+        """
         self.schedule_widget = Schedule2DaysWidget(parent=self,
                                                    schedule=self.schedule_2days,
                                                    display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)
         self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_hour_changed)
-        self.frame_widgets_bottom = Frame(self)
+        
+        
         self.auto_schedule_creator_widget = AutoHourlyScheduleCreatorWidget(parent=self.frame_widgets_bottom,
                                                                             auto_schedule_creator=self.auto_sch_creator,
-                                                                display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
+                                                                            display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
+        
         self.alarm_clock_widget = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
                                                                   sch=self.alarm_clock)
-        self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_schedule_change)
-        self.alarm_clock.register(self.alarm_clock_widget, DailyTimedSchedule.event_name_new_device_associated)
+        
         self.christmas_lights_widget = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
                                                                        sch=self.christmas_lights)
         self.christmas_lights.register(self.christmas_lights_widget, DailyTimedSchedule.event_name_schedule_change)
         self.christmas_lights.register(self.christmas_lights_widget,
                                        DailyTimedSchedule.event_name_new_device_associated)
+       """
 
     def place_ui_elements(self) -> None:
         # Place created UI elements
+        # Main grid  - label
+        self.lbl_status.grid(row=0, column=0)
         # Buttons grid
+        self.frame_extra_btns.grid(row=1, column=0)
         self.btn_1.grid(row=0, column=0)
         self.btn_2.grid(row=0, column=1)
-        # Main grid
-        self.lbl_status.grid(row=0, column=0)
-        self.frame_extra_btns.grid(row=1, column=0)
         self.frame_devices.grid(row=2, column=0)
         last_socket_widget = 0
         # Place device widgets in frame
@@ -318,11 +368,26 @@ class MainUIClass(Tk, Observer):
             last_socket_widget += 1
         if settings.AHU_ENABLED:
             self.ahu_widget.grid(row=0, column=last_socket_widget)
+        # At which row start placing schedules
+        row_to_use = 3
+        last_small_sch_widget = 0
+        for widget in self.sch_widgets:
+            if isinstance(widget, Schedule2DaysWidget):
+                # Large widget place in separate row
+                widget.grid(row=row_to_use, column=0)
+                row_to_use += 1
+            else:
+                # small widgets go on the widgets frame
+                widget.grid(row=0, column=last_small_sch_widget)
+                # Save location so next free position is known
+                last_small_sch_widget += 1
+        self.frame_widgets_bottom.grid(row=row_to_use, column=0)
+        """
         self.schedule_widget.grid(row=3, column=0)
-        self.frame_widgets_bottom.grid(row=4, column=0)
         self.auto_schedule_creator_widget.grid(row=0, column=0)
         self.alarm_clock_widget.grid(row=0, column=1)
         self.christmas_lights_widget.grid(row=0, column=2)
+        """
 
     def open_price_file_folder(self) -> None:
         subprocess.Popen(['explorer', self.PRICE_FILE_LOCATION])

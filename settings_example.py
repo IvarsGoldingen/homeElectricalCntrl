@@ -26,3 +26,5 @@ MQTT_PORT = 1883
 PRICE_FILE_LOCATION = "C:\\py_related\\home_el_cntrl\\price_lists"
 DEV_CONFIG_FILE_LOCATION = "C:\\py_related\\home_el_cntrl\\sys_config"
 DEV_CONFIG_FILE_NAME = "devices.cnf"
+SCH_CONFIG_FILE_LOCATION = "C:\\py_related\\home_el_cntrl\\sys_config"
+SCH_CONFIG_FILE_NAME = "schedules.cnf"

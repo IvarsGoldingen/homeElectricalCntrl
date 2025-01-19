@@ -101,9 +101,9 @@ def get_device_json_from_file(file_path: str) -> list[dict]:
         with open(file_path, 'r') as file:
             return json.load(file)
     except json.decoder.JSONDecodeError:
-        logger.error(f"Unable to parse state data from {file_path}.")
+        logger.error(f"Unable to parse device data from {file_path}.")
     except Exception as e:
-        logger.error(f"Unable to load state {file_path}. Error {e}")
+        logger.error(f"Unable to load devices {file_path}. Error {e}")
     raise Exception("Failed to open device file")
 
 if __name__ == "__main__":

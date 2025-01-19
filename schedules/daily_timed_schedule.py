@@ -64,9 +64,9 @@ class DailyTimedSchedule(Subject, StateSaver):
         self.state_file_loc = state_file_loc
         # if false, will be executed once
         self.repeat_daily = True
-        self._hour_on = 6
-        self._minute_on = 45
-        self._on_time_min = 15
+        self._hour_on = hour_on
+        self._minute_on = minute_on
+        self._on_time_min = on_time_min
         # Will the schedule activate at the set time
         self._schedule_enabled = False
         # should device be on or off

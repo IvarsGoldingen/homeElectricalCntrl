@@ -1,0 +1,6 @@
+[
+    {"type": "HOURLY_SCHEDULE_2_DAYS", "name": "2 DAY SCHEDULE", "assigned_device": "Plug 1"},
+    {"type": "AUTO_SCHEDULE_CREATOR", "name": "Auto schedule creator", "assigned_schedule": "2 DAY SCHEDULE"},
+    {"type": "DAILY_TIMED_SCHEDULE", "name": "Alarm clock", "assigned_device": ""},
+    {"type": "DAILY_TIMED_SCHEDULE", "name": "Christmas lights", "assigned_device": "Plug 2"}
+]
