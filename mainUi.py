@@ -328,29 +328,6 @@ class MainUIClass(Tk, Observer):
                 logger.error("Unknown schedule in schedule list")
                 raise Exception("Unknown schedule in schedule list")
 
-        """
-        self.schedule_widget = Schedule2DaysWidget(parent=self,
-                                                   schedule=self.schedule_2days,
-                                                   display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
-        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_schedule_change)
-        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_new_device_associated)
-        self.schedule_2days.register(self.schedule_widget, HourlySchedule2days.event_name_hour_changed)
-        
-        
-        self.auto_schedule_creator_widget = AutoHourlyScheduleCreatorWidget(parent=self.frame_widgets_bottom,
-                                                                            auto_schedule_creator=self.auto_sch_creator,
-                                                                            display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
-        
-        self.alarm_clock_widget = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
-                                                                  sch=self.alarm_clock)
-        
-        self.christmas_lights_widget = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,
-                                                                       sch=self.christmas_lights)
-        self.christmas_lights.register(self.christmas_lights_widget, DailyTimedSchedule.event_name_schedule_change)
-        self.christmas_lights.register(self.christmas_lights_widget,
-                                       DailyTimedSchedule.event_name_new_device_associated)
-       """
-
     def place_ui_elements(self) -> None:
         # Place created UI elements
         # Main grid  - label
