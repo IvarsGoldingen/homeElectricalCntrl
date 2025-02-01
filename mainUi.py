@@ -197,7 +197,8 @@ class MainUIClass(Tk, Observer):
         for dev in self.dev_list:
             if dev.device_type == DeviceType.SHELLY_PLUG or \
                     dev.device_type == DeviceType.SHELLY_PLUS or \
-                    dev.device_type == DeviceType.SHELLY_PLUS_PM:
+                    dev.device_type == DeviceType.SHELLY_PLUS_PM or \
+                    dev.device_type == DeviceType.SHELLY_PRO_3EM :
                 # if device is an MQTT device, register the topic that should be subscribed to and a callback
                 # for receiving messages from that topic
                 self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)# type: ignore
@@ -276,7 +277,7 @@ class MainUIClass(Tk, Observer):
                 dev.register(shelly_url_widget, URLControlledShellyPlug.event_name_new_extra_data)
                 self.dev_widgets.append(shelly_url_widget)
             else:
-                logger.warning("Device list contains device without widget associated to its type")
+                logger.warning(f"Device list contains device without widget associated to its type {dev.name}")
 
     # noinspection PyAttributeOutsideInit
     def setup_schedule_widgets_from_list(self):

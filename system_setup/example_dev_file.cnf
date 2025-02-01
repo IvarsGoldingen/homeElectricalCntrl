@@ -1,4 +1,5 @@
 [
     {"type": "SHELLY_PLUG", "name": "Plug 1", "plug_id": "shellyplug-s-80646F840029"},
-    {"type": "SHELLY_PLUG", "name": "Plug 2", "plug_id": "shellyplug-s-C8C9A3B8E92E"}
+    {"type": "SHELLY_PLUG", "name": "Plug 2", "plug_id": "shellyplug-s-C8C9A3B8E92E"},
+    {"type": "SHELLY_PLUG", "name": "Plug 3", "plug_id": "shellyplug-s-80646F837D0F"}
 ]

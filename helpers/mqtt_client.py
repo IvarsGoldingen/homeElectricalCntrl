@@ -28,9 +28,10 @@ logger.addHandler(file_handler)
 
 def test():
     client = MyMqttClient()
-    # client.add_listen_topic("#", test_cb)
+    #client.add_listen_topic("#", test_cb)
+    client.add_listen_topic("shellypro3em-34987a446e54/#", test_cb)
     # client.add_listen_topic("shellyplus1-441793ab3fb4/#", test_cb)
-    client.add_listen_topic("shellyplus1pm-d48afc417d58/#", test_cb)
+    # client.add_listen_topic("shellyplus1pm-d48afc417d58/#", test_cb)
     # client.add_listen_topic("shellies/shellyplug-s-80646F840029/#", test_cb)
     client.start(settings.MQTT_SERVER, settings.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
     device_bool = False
@@ -40,21 +41,21 @@ def test():
             time.sleep(0.5)
             client.loop()
             test_cntr += 1
-            if test_cntr % 20 == 0:
-                if not device_bool:
-                    print("turning on")
-                    # client.publish("shellyplus1-441793ab3fb4/command/switch:0", "on")
-                    client.publish("shellyplus1pm-d48afc417d58/command/switch:0", "on")
-                    # get status of shelly relay
-                    # client.publish("shellyplus1-441793ab3fb4/command", "status_update")
-                    client.publish("shellyplus1pm-d48afc417d58/command", "status_update")
-                    # For plug
-                    # client.publish("shellies/shellyplug-s-80646F840029/relay/0/command", "on")
-                else:
-                    print("turning off")
-                    # client.publish("shellyplus1-441793ab3fb4/command/switch:0", "off")
-                    client.publish("shellyplus1pm-d48afc417d58/command/switch:0", "off")
-                device_bool = not device_bool
+            # if test_cntr % 20 == 0:
+            #     if not device_bool:
+            #         print("turning on")
+            #         # client.publish("shellyplus1-441793ab3fb4/command/switch:0", "on")
+            #         client.publish("shellyplus1pm-d48afc417d58/command/switch:0", "on")
+            #         # get status of shelly relay
+            #         # client.publish("shellyplus1-441793ab3fb4/command", "status_update")
+            #         client.publish("shellyplus1pm-d48afc417d58/command", "status_update")
+            #         # For plug
+            #         # client.publish("shellies/shellyplug-s-80646F840029/relay/0/command", "on")
+            #     else:
+            #         print("turning off")
+            #         # client.publish("shellyplus1-441793ab3fb4/command/switch:0", "off")
+            #         client.publish("shellyplus1pm-d48afc417d58/command/switch:0", "off")
+            #     device_bool = not device_bool
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt caught. Exiting gracefully.")
     finally:
