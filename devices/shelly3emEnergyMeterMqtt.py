@@ -227,8 +227,10 @@ class ShellyEnergyMeter3em(MqttDevice):
         try:
             inner_data = data.get(key)
             energy_wmin_str = inner_data.get("total_act_energy")
-            energy_wmin = float(energy_wmin_str)
-            energy_kwh = energy_wmin / 60.0 / 1000
+            energy_wh = float(energy_wmin_str)
+            energy_kwh = energy_wh / 1000
+            # energy_wmin = float(energy_wmin_str)
+            # energy_kwh = energy_wmin / 60.0 / 1000
             self.sensor_data.energy[phase].value = energy_kwh
             new_data = True
         except KeyError as e:
