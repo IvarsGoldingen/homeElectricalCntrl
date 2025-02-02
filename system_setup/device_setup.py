@@ -9,6 +9,7 @@ from devices.shellyPlugMqtt import ShellyPlug
 from devices.shellyPlus import ShellyPlus
 from devices.shellyPlusPM import ShellyPlusPM
 from devices.shellyPlugUrlControlled import URLControlledShellyPlug
+from devices.shelly3emEnergyMeterMqtt import ShellyEnergyMeter3em
 from devices.device import Device
 import settings
 import json
@@ -84,6 +85,10 @@ def get_dev_list_from_dic_list(dev_dic_list: list[dict], mqtt_publish_method:  C
             dev_list.append(URLControlledShellyPlug(name=dev_dic["name"],
                                        url_on=dev_dic["url_on"],
                                        url_off=dev_dic["url_off"]))
+        elif dev_dic["type"] == DeviceType.SHELLY_PRO_3EM.name:
+            dev_list.append(ShellyEnergyMeter3em(name=dev_dic["name"],
+                                       mqtt_publish=mqtt_publish_method,
+                                       device_id=dev_dic["device_id"]))
         else:
             raise Exception("Device file contains unknown device type")
     return dev_list

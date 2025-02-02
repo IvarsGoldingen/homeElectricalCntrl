@@ -33,7 +33,7 @@ def test():
     smart_relay = ShellyPlusPM(name="Shelly plus PM",
                              mqtt_publish=client.publish, plug_id="shellyplus1pm-d48afc417d58")
     client.add_listen_topic(smart_relay.listen_topic, smart_relay.process_received_mqtt_data)
-    client.start(secrets.MQTT_SERVER, secrets.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
+    client.start(settings.MQTT_SERVER, settings.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
     test_cntr = 0
     try:
         smart_relay.set_mode(Device.MODE_MAN)

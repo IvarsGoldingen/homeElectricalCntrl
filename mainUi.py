@@ -55,6 +55,7 @@ def main() -> None:
     # App started as object initiated
     main = MainUIClass()
 
+
 # Mainclass extends tkinter for creation of UI
 class MainUIClass(Tk, Observer):
     # How often to log system values to database or other storage location
@@ -118,6 +119,15 @@ class MainUIClass(Tk, Observer):
             # If ahu enabled get all sensors from it
             ahu_sensors = self.ahu.get_sensor_list()
             all_sensors.extend(ahu_sensors)
+        for dev in self.dev_list:
+            # If device has Sensor object within it add to sensor list
+            if dev.device_type == DeviceType.SHELLY_PRO_3EM:
+                # Get sensors from energy meter
+                # noinspection PyUnresolvedReferences
+                all_sensors.extend(dev.get_sensors_as_list())
+        logger.info("Sensor registered in system")
+        for sensor in all_sensors:
+            logger.info(sensor)
         # noinspection PyAttributeOutsideInit
         self.data_logger = DataLogger(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                       device_list=self.dev_list,
@@ -185,23 +195,25 @@ class MainUIClass(Tk, Observer):
     def setup_schedules(self) -> None:
         self.schedule_list = get_schedule_list_from_file(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                          dev_list=self.dev_list,
-                                                         file_path=os.path.join(settings.SCH_CONFIG_FILE_LOCATION,# type: ignore
-                                                                         settings.SCH_CONFIG_FILE_NAME))
+                                                         file_path=os.path.join(settings.SCH_CONFIG_FILE_LOCATION,
+                                                                                # type: ignore
+                                                                                settings.SCH_CONFIG_FILE_NAME))
 
     # noinspection PyAttributeOutsideInit
     def setup_devices(self) -> None:
         # Setup automation devices
         self.dev_list = get_device_list_from_file(mqtt_publish_method=self.mqtt_client.publish,
-                                                  file_path=os.path.join(settings.DEV_CONFIG_FILE_LOCATION,# type: ignore
+                                                  file_path=os.path.join(settings.DEV_CONFIG_FILE_LOCATION,
+                                                                         # type: ignore
                                                                          settings.DEV_CONFIG_FILE_NAME))
         for dev in self.dev_list:
             if dev.device_type == DeviceType.SHELLY_PLUG or \
                     dev.device_type == DeviceType.SHELLY_PLUS or \
                     dev.device_type == DeviceType.SHELLY_PLUS_PM or \
-                    dev.device_type == DeviceType.SHELLY_PRO_3EM :
+                    dev.device_type == DeviceType.SHELLY_PRO_3EM:
                 # if device is an MQTT device, register the topic that should be subscribed to and a callback
                 # for receiving messages from that topic
-                self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)# type: ignore
+                self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)  # type: ignore
         if settings.AHU_ENABLED:
             self.ahu = ValloxAhu(ip="http://192.168.94.117/")
 
@@ -226,10 +238,11 @@ class MainUIClass(Tk, Observer):
             price_list_tomorrow[hour] = value
         # TODO: Handle getting the widget better - add class attribute associate prices or something
         # Find 2 day schedule which should show electricity prices
-        schedule_2day_w_prices = next(sch_widget for sch_widget in self.sch_widgets if isinstance(sch_widget, Schedule2DaysWidget))
+        schedule_2day_w_prices = next(
+            (sch_widget for sch_widget in self.sch_widgets if isinstance(sch_widget, Schedule2DaysWidget)), None)
         # Set the prices on the schedule so they are visible in the UI
-        schedule_2day_w_prices.add_price_to_hourly_checkbox_label(price_list_today, price_list_tomorrow)
-
+        if schedule_2day_w_prices:
+            schedule_2day_w_prices.add_price_to_hourly_checkbox_label(price_list_today, price_list_tomorrow)
 
     # noinspection PyAttributeOutsideInit
     def prepare_ui_elements(self) -> None:
@@ -255,27 +268,30 @@ class MainUIClass(Tk, Observer):
         for dev in self.dev_list:
             # For each device type create the apropriate widget and register listeners to those widgets
             if dev.device_type == DeviceType.SHELLY_PLUG:
-                shelly_widget = ShellyPlugWidget(parent=self.frame_devices, device=dev) # type: ignore
+                shelly_widget = ShellyPlugWidget(parent=self.frame_devices, device=dev)  # type: ignore
                 dev.register(shelly_widget, Device.event_name_status_changed)
                 dev.register(shelly_widget, ShellyPlug.event_name_new_extra_data)
                 self.dev_widgets.append(shelly_widget)
             elif dev.device_type == DeviceType.SHELLY_PLUS:
-                shelly_plus_widget = ShellyPlusWidget(parent=self.frame_devices, device=dev) # type: ignore
+                shelly_plus_widget = ShellyPlusWidget(parent=self.frame_devices, device=dev)  # type: ignore
                 dev.register(shelly_plus_widget, Device.event_name_status_changed)
                 dev.register(shelly_plus_widget, ShellyPlus.event_name_new_extra_data)
                 dev.register(shelly_plus_widget, ShellyPlus.event_name_input_state_change)
                 self.dev_widgets.append(shelly_plus_widget)
             elif dev.device_type == DeviceType.SHELLY_PLUS_PM:
-                shelly_plus_pm_widget = ShellyPlusPmWidget(parent=self.frame_devices, device=dev) # type: ignore
+                shelly_plus_pm_widget = ShellyPlusPmWidget(parent=self.frame_devices, device=dev)  # type: ignore
                 dev.register(shelly_plus_pm_widget, Device.event_name_status_changed)
                 dev.register(shelly_plus_pm_widget, ShellyPlus.event_name_new_extra_data)
                 dev.register(shelly_plus_pm_widget, ShellyPlus.event_name_input_state_change)
                 self.dev_widgets.append(shelly_plus_pm_widget)
             elif dev.device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG:
-                shelly_url_widget = ShellyPlugUrlWidget(parent=self.frame_devices, device=dev) # type: ignore
+                shelly_url_widget = ShellyPlugUrlWidget(parent=self.frame_devices, device=dev)  # type: ignore
                 dev.register(shelly_url_widget, Device.event_name_status_changed)
                 dev.register(shelly_url_widget, URLControlledShellyPlug.event_name_new_extra_data)
                 self.dev_widgets.append(shelly_url_widget)
+            elif dev.device_type == DeviceType.SHELLY_PRO_3EM:
+                # TODO:
+                pass
             else:
                 logger.warning(f"Device list contains device without widget associated to its type {dev.name}")
 
@@ -287,16 +303,16 @@ class MainUIClass(Tk, Observer):
         for sch in self.schedule_list:
             if isinstance(sch, HourlySchedule2days):
                 hourly_2day_widget = Schedule2DaysWidget(parent=self,
-                                                   schedule=sch,
-                                                   display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
+                                                         schedule=sch,
+                                                         display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
                 sch.register(hourly_2day_widget, HourlySchedule2days.event_name_schedule_change)
                 sch.register(hourly_2day_widget, HourlySchedule2days.event_name_new_device_associated)
                 sch.register(hourly_2day_widget, HourlySchedule2days.event_name_hour_changed)
                 self.sch_widgets.append(hourly_2day_widget)
             elif isinstance(sch, AutoScheduleCreator):
                 auto_sch_creator = AutoHourlyScheduleCreatorWidget(parent=self.frame_widgets_bottom,
-                                                                    auto_schedule_creator=sch,
-                                                                    display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
+                                                                   auto_schedule_creator=sch,
+                                                                   display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
                 self.sch_widgets.append(auto_sch_creator)
             elif isinstance(sch, DailyTimedSchedule):
                 daily_timed_sch = DailyTimedScheduleCreatorWidget(parent=self.frame_widgets_bottom,

@@ -1,21 +1,16 @@
-"""
-Class that inherits from MqttDevice class
-For monitoring of shelly Pro 3EM energy meter
-Made as a device since it is possible to add a relay output to the device. This will not be implemented
-for initial commit.
-Mqtt must be enabled from the webservice of the device
-"""
 import time
 from typing import Callable
+import json
 import logging
 import os
+from dataclasses import dataclass
 from helpers.sensor import Sensor
 from devices.deviceTypes import DeviceType
 from devices.mqttDevice import MqttDevice
-from devices.device import Device
+from helpers.mqtt_client import MyMqttClient
 import settings
-from dataclasses import dataclass
-import json
+import secrets
+from helpers.observer_pattern import Observer
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -24,7 +19,8 @@ logger.setLevel(settings.BASE_LOG_LEVEL)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
+# TODO:stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
+stream_handler.setLevel(logging.DEBUG)
 logger.addHandler(stream_handler)
 # File logger
 file_handler = logging.FileHandler(os.path.join("../logs", "shelly_energy_meter.log"))
@@ -32,34 +28,71 @@ file_handler.setFormatter(log_formatter)
 file_handler.setLevel(settings.FILE_LOG_LEVEL)
 logger.addHandler(file_handler)
 
-"""
-1. Search for params
-2. Has (em1data:0 OR em1data:1 OR em2data:0) OR (em1:0 OR em1:1 OR em1:2)
-3. Get data
 
-hellypro3em-34987a446e54/events/rpc b'{"src":"shellypro3em-34987a446e54","dst":"shellypro3em-34987a446e54/events","method":"NotifyStatus","params":
-{"ts":1738256760.23,"em1data:0":{"id":0,"total_act_energy":6737.72,"total_act_ret_energy":1.78}}}'
+def test_fc():
+    class TestObserver(Observer):
+        def handle_subject_event(self, event_type: str, *args, **kwargs):
+            print(f"{event_type}")
 
-shellypro3em-34987a446e54/events/rpc b'{"src":"shellypro3em-34987a446e54","dst":"shellypro3em-34987a446e54/events","method":"NotifyStatus","params":
-{"ts":1738256744.19,"em1:0":{"id":0,"act_power":1.2,"aprt_power":19.0,"current":0.081,"freq":50.0,"pf":0.07,"voltage":235.2}}}'
-"""
+    print("Start")
+    client = MyMqttClient()
+    test_observer = TestObserver()
+    em = ShellyEnergyMeter3em(name="Energy meter",
+                              mqtt_publish=client.publish,
+                              device_id="shellypro3em-34987a446e54")
+    client.add_listen_topic(em.listen_topic, em.process_received_mqtt_data)
+    client.start(settings.MQTT_SERVER, settings.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
+    em.register(test_observer, ShellyEnergyMeter3em.event_name_new_extra_data)
+    test_cntr = 0
+    try:
+        print("Entering loop")
+        while True:
+            time.sleep(0.5)
+            client.loop()
+            em.loop()
+            if test_cntr % 20 == 0:
+                print(em.sensor_data)
+            test_cntr += 1
+    except KeyboardInterrupt:
+        print("\nKeyboardInterrupt caught. Exiting gracefully.")
+    finally:
+        client.stop()
+
+
 @dataclass()
 class EnergyMeterData:
-    voltage: dict["1":Sensor, "2":Sensor, "3":Sensor]
-    current: dict["1":Sensor, "2":Sensor, "3":Sensor]
-    freq: dict["1":Sensor, "2":Sensor, "3":Sensor]
-    power: dict["1":Sensor, "2":Sensor, "3":Sensor]
-    pf: dict["1":Sensor, "2":Sensor, "3":Sensor]
-    energy: dict["1":Sensor, "2":Sensor, "3":Sensor]
+    voltage: dict[1:Sensor, 2:Sensor, 3:Sensor]
+    current: dict[1:Sensor, 2:Sensor, 3:Sensor]
+    freq: dict[1:Sensor, 2:Sensor, 3:Sensor]
+    power: dict[1:Sensor, 2:Sensor, 3:Sensor]
+    pf: dict[1:Sensor, 2:Sensor, 3:Sensor]
+    energy: dict[1:Sensor, 2:Sensor, 3:Sensor]
+
+    def __str__(self):
+        def format_dict(name, data):
+            return f"{name}:\n" + "\n".join(f"  Phase {key}: {value}" for key, value in data.items())
+        return "\n\n".join([
+            format_dict("Voltage", self.voltage),
+            format_dict("Current", self.current),
+            format_dict("Frequency", self.freq),
+            format_dict("Power", self.power),
+            format_dict("Power Factor", self.pf),
+            format_dict("Energy", self.energy),
+        ])
 
 
-class ShellyPlug(MqttDevice):
+class ShellyEnergyMeter3em(MqttDevice):
     """
+
+    Class that inherits from MqttDevice class
+    For monitoring of shelly Pro 3EM energy meter
+    Made as a device since it is possible to add a relay output to the device. This will not be implemented
+    for initial commit.
+    Mqtt must be enabled from the webservice of the device
+
     TODO:
     handle UI, create widget
     data logging
-    For this object create a list of sensors and then add them to the sensor list of the main program for logging
-    Create loading from file
     """
 
     TIME_SINCE_LAST_MSG_TO_CONSIDER_ONLINE_S = 60
@@ -77,13 +110,13 @@ class ShellyPlug(MqttDevice):
         self.time_of_last_msg = 0
         # Will be set to true if MQTT msg received recently
         self.state_online = False
-        self.base_mqtt_topic = f"shellies/{self.device_id}"
+        self.base_mqtt_topic = f"{self.device_id}"
         # listen to all messages related to this MQTT device
         self.listen_topic = f"{self.base_mqtt_topic}/#"
-        # Only one MQTT topic relevane for energy meter
+        # Only one MQTT topic relevant for energy meter
         self.data_mqtt_topic = f"{self.base_mqtt_topic}/events/rpc"
         # Received data is dictionaries with one of the following keys in them
-        self.phase_mapping_real_time_data = {"em1:0": 1, "em1:1": 2, "em1:2":3}
+        self.phase_mapping_real_time_data = {"em1:0": 1, "em1:1": 2, "em1:2": 3}
         self.phase_mapping_energy_data = {"em1data:0": 1, "em1data:1": 2, "em1data:2": 3}
         # Values that will be read from MQTT
         self.sensor_data = self.setup_sensor_obj()
@@ -98,7 +131,7 @@ class ShellyPlug(MqttDevice):
 
     def setup_sensor_obj(self) -> EnergyMeterData:
         """
-        :return: EnergyMeterData obeject containinng all sensors
+        :return: EnergyMeterData object containing all sensors
         """
         current_sensor_list = []
         power_sensor_list = []
@@ -118,16 +151,17 @@ class ShellyPlug(MqttDevice):
                 Sensor(name=f"ph{i + 1}_pf", value=Sensor.NO_DATA_VALUE, group_name=self.name))
             freq_sensor_list.append(
                 Sensor(name=f"ph{i + 1}_freq", value=Sensor.NO_DATA_VALUE, group_name=self.name))
-        sensor_data = EnergyMeterData(voltage={"1":voltage_sensor_list[0],"2":voltage_sensor_list[1],"3":voltage_sensor_list[2]},
-                                      current={"1":current_sensor_list[0],"2":current_sensor_list[1],"3":current_sensor_list[2]},
-                                      freq={"1":freq_sensor_list[0],"2":freq_sensor_list[1],"3":freq_sensor_list[2]},
-                                      power={"1": power_sensor_list[0], "2": power_sensor_list[1],"3": power_sensor_list[2]},
-                                      pf={"1":pf_sensor_list[0],"2":pf_sensor_list[1],"3":pf_sensor_list[2]},
-                                      energy={"1":energy_sensor_list[0],"2":energy_sensor_list[1],"3":energy_sensor_list[2]})
+        sensor_data = EnergyMeterData(
+            voltage={1: voltage_sensor_list[0], 2: voltage_sensor_list[1], 3: voltage_sensor_list[2]},
+            current={1: current_sensor_list[0], 2: current_sensor_list[1], 3: current_sensor_list[2]},
+            freq={1: freq_sensor_list[0], 2: freq_sensor_list[1], 3: freq_sensor_list[2]},
+            power={1: power_sensor_list[0], 2: power_sensor_list[1], 3: power_sensor_list[2]},
+            pf={1: pf_sensor_list[0], 2: pf_sensor_list[1], 3: pf_sensor_list[2]},
+            energy={1: energy_sensor_list[0], 2: energy_sensor_list[1], 3: energy_sensor_list[2]})
         return sensor_data
 
     def check_status_online_offline(self) -> None:
-        # Checks wether set device status equals set state
+        # Checks wether device last message recent enough to consider it online
         time_since_last_msg = time.perf_counter() - self.time_of_last_msg
         online = False if time_since_last_msg > self.TIME_SINCE_LAST_MSG_TO_CONSIDER_ONLINE_S else True
         if online != self.state_online:
@@ -149,9 +183,9 @@ class ShellyPlug(MqttDevice):
             clean_data = data.strip("b'")
             self.extract_data_from_message(clean_data)
         else:
-            logger.warning(f"Unhandled MQTT topic for energy meter {self.name}")
+            logger.debug(f"Unhandled MQTT topic for energy meter {self.name}")
 
-    def  extract_data_from_message(self, data:str) -> None:
+    def extract_data_from_message(self, data: str) -> None:
         """
         Update sensor class instance variable with read data
         :param data: receiving string message from MQTT
@@ -180,7 +214,7 @@ class ShellyPlug(MqttDevice):
         if new_data:
             self.device_notify(self.event_name_new_extra_data, self.name, self.device_type)
 
-    def handle_energy_data(self, data:dict) -> bool:
+    def handle_energy_data(self, data: dict) -> bool:
         """
         :param data: dictionary holding energy data like this:
         {"ts":1738256760.23,"em1data:0":{"id":0,"total_act_energy":6737.72,"total_act_ret_energy":1.78}
@@ -198,13 +232,13 @@ class ShellyPlug(MqttDevice):
             self.sensor_data.energy[phase].value = energy_kwh
             new_data = True
         except KeyError as e:
-            logger.error(f"Missing key in JSON data: {e}")
+            logger.error(f"Key error when handling energy meter energy data: {e}")
+            logger.error(data)
         except ValueError as e:
             logger.error(f"Failed to cast data: {e}")
         return new_data
 
-
-    def handle_real_time_values(self, data:dict) -> bool:
+    def handle_real_time_values(self, data: dict) -> bool:
         """
         :param data: dictionary holding real time data like this:
         {"ts":1738256744.19,"em1:0":{"id":0,"act_power":1.2,"aprt_power":19.0,
@@ -240,10 +274,32 @@ class ShellyPlug(MqttDevice):
             pf = float(pf_str)
             self.sensor_data.pf[phase].value = pf
         except KeyError as e:
-            logger.error(f"Missing key in JSON data: {e}")
+            logger.error(f"Key error when handling energy meter real time data: {e}")
+            logger.error(data)
         except ValueError as e:
             logger.error(f"Failed to cast data: {e}")
         return new_data
+
+    def get_sensors_as_list(self) -> list[Sensor]:
+        """
+        class EnergyMeterData:
+       voltage: dict[1:Sensor, 2:Sensor, 3:Sensor]
+       current: dict[1:Sensor, 2:Sensor, 3:Sensor]
+       freq: dict[1:Sensor, 2:Sensor, 3:Sensor]
+       power: dict[1:Sensor, 2:Sensor, 3:Sensor]
+       pf: dict[1:Sensor, 2:Sensor, 3:Sensor]
+       energy: dict[1:Sensor, 2:Sensor, 3:Sensor]
+        :return:
+        """
+        sensor_list = []
+        for ph in range(1,4):
+            sensor_list.append(self.sensor_data.voltage[ph])
+            sensor_list.append(self.sensor_data.current[ph])
+            sensor_list.append(self.sensor_data.freq[ph])
+            sensor_list.append(self.sensor_data.power[ph])
+            sensor_list.append(self.sensor_data.pf[ph])
+            sensor_list.append(self.sensor_data.energy[ph])
+        return sensor_list
 
     def _turn_device_off_on(self, off_on: bool):
         """
@@ -253,6 +309,9 @@ class ShellyPlug(MqttDevice):
         """
         raise Exception("On off for energy meter not implemented")
 
+
+if __name__ == "__main__":
+    test_fc()
 
 """
 Received MQTT messages:
