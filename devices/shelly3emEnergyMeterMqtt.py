@@ -19,8 +19,7 @@ logger.setLevel(settings.BASE_LOG_LEVEL)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
-# TODO:stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
-stream_handler.setLevel(logging.DEBUG)
+stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
 logger.addHandler(stream_handler)
 # File logger
 file_handler = logging.FileHandler(os.path.join("../logs", "shelly_energy_meter.log"))

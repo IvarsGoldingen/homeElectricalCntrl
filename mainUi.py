@@ -10,6 +10,7 @@ from tkinter import Tk, Label, Button, Frame
 import logging
 import global_var
 from custom_devices.vallux_ahu import ValloxAhu
+from devices.shelly3emEnergyMeterMqtt import ShellyEnergyMeter3em
 from devices.shellyPlugMqtt import ShellyPlug
 from devices.shellyPlus import ShellyPlus
 from devices.shellyPlugUrlControlled import URLControlledShellyPlug
@@ -28,6 +29,7 @@ from schedules.daily_timed_schedule import DailyTimedSchedule
 from custom_tk_widgets.auto_hourly_schedule_creator_widget import AutoHourlyScheduleCreatorWidget
 from custom_tk_widgets.daily_timed_schedule_widget import DailyTimedScheduleCreatorWidget
 from custom_tk_widgets.ahu_widget import AhuWidget
+from custom_tk_widgets.shelly_3em_widget import ShellyEmWidget
 from helpers.observer_pattern import Observer
 from helpers.data_logger import DataLogger
 from system_setup.device_setup import get_device_list_from_file
@@ -290,8 +292,9 @@ class MainUIClass(Tk, Observer):
                 dev.register(shelly_url_widget, URLControlledShellyPlug.event_name_new_extra_data)
                 self.dev_widgets.append(shelly_url_widget)
             elif dev.device_type == DeviceType.SHELLY_PRO_3EM:
-                # TODO:
-                pass
+                shelly_em_widget = ShellyEmWidget(parent=self.frame_devices, device=dev)  # type: ignore
+                dev.register(shelly_em_widget, ShellyEnergyMeter3em.event_name_new_extra_data)
+                self.dev_widgets.append(shelly_em_widget)
             else:
                 logger.warning(f"Device list contains device without widget associated to its type {dev.name}")
 
