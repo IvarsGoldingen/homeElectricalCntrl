@@ -43,7 +43,6 @@ class AhuWidget(tk.Frame, Observer):
         self.lbl_t_outdoor_air = Label(self, text="T OUTDOOR", width=self.LABEL_WIDTH)
         self.lbl_t_supply_air = Label(self, text="T SUPPLY", width=self.LABEL_WIDTH)
         self.lbl_t_exhaust_air = Label(self, text="T EXHAUST", width=self.LABEL_WIDTH)
-        self.btn_req_data = Button(self, text='REQ NEW DATA', command=self.ahu.req_new_data, width=self.BTN_WIDTH)
         self.btn_open_web = Button(self, text='OPEN WEB', command=self.open_web_page, width=self.BTN_WIDTH)
 
     def open_web_page(self):
@@ -58,8 +57,7 @@ class AhuWidget(tk.Frame, Observer):
         self.lbl_t_outdoor_air.grid(row=3, column=1)
         self.lbl_t_supply_air.grid(row=4, column=0)
         self.lbl_t_exhaust_air.grid(row=4, column=1)
-        self.btn_req_data.grid(row=5, column=0, columnspan=2)
-        self.btn_open_web.grid(row=6, column=0, columnspan=2)
+        self.btn_open_web.grid(row=5, column=0, columnspan=2)
 
     def handle_subject_event(self, event_type: str, *args, **kwargs):
         self.update_widget()
