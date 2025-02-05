@@ -198,16 +198,14 @@ class MainUIClass(Tk, Observer):
         self.schedule_list = get_schedule_list_from_file(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                          dev_list=self.dev_list,
                                                          file_path=os.path.join(settings.SCH_CONFIG_FILE_LOCATION,
-                                                                                # type: ignore
-                                                                                settings.SCH_CONFIG_FILE_NAME))
-
+                                                                                settings.SCH_CONFIG_FILE_NAME))# type: ignore
     # noinspection PyAttributeOutsideInit
     def setup_devices(self) -> None:
         # Setup automation devices
         self.dev_list = get_device_list_from_file(mqtt_publish_method=self.mqtt_client.publish,
                                                   file_path=os.path.join(settings.DEV_CONFIG_FILE_LOCATION,
                                                                          # type: ignore
-                                                                         settings.DEV_CONFIG_FILE_NAME))
+                                                                         settings.DEV_CONFIG_FILE_NAME))# type: ignore
         for dev in self.dev_list:
             if dev.device_type == DeviceType.SHELLY_PLUG or \
                     dev.device_type == DeviceType.SHELLY_PLUS or \
