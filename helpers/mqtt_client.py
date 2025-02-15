@@ -75,7 +75,8 @@ class MyMqttClient(Subject):
     """
     # For the observer pattern
     event_name_status_change = "mqtt_status_changed"
-
+    # I f true every message from MQTT will be debufg logged
+    DEBUG_LOG_EVERY_MSG = False
     def __init__(self):
         Subject.__init__(self)
         self.status = self.MqttClientThread.STATUS_DISCONNECTED
@@ -257,7 +258,8 @@ class MyMqttClient(Subject):
                 {"msg_type": self.MsgType.MQTT_CLIENT_STATUS_CHANGE, "data": self.status})
 
         def on_message(self, client, userdata, msg):
-            logger.debug(f"Msg received {msg.topic} {str(msg.payload)}")
+            if self.DEBUG_LOG_EVERY_MSG:
+                logger.debug(f"Msg received {msg.topic} {str(msg.payload)}")
             # Forward the message to the main mqtt class
             self.queue_from_mqtt_thread.put(
                 {"msg_type": self.MsgType.NEW_MQTT_MSG_RECEIVED, "topic": msg.topic, "msg": str(msg.payload)})
