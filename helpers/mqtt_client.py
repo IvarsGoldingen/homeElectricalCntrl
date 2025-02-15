@@ -75,8 +75,7 @@ class MyMqttClient(Subject):
     """
     # For the observer pattern
     event_name_status_change = "mqtt_status_changed"
-    # I f true every message from MQTT will be debufg logged
-    DEBUG_LOG_EVERY_MSG = False
+
     def __init__(self):
         Subject.__init__(self)
         self.status = self.MqttClientThread.STATUS_DISCONNECTED
@@ -169,6 +168,8 @@ class MyMqttClient(Subject):
         # Connection status constants
         STATUS_DISCONNECTED = 0
         STATUS_CONNECTED = 1
+        # I f true every message from MQTT will be debufg logged
+        DEBUG_LOG_EVERY_MSG = False
 
         class MsgType(Enum):
             # Message types that can be exchanged between the client class and the main mqtt class
