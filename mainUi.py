@@ -215,7 +215,7 @@ class MainUIClass(Tk, Observer):
                 # for receiving messages from that topic
                 self.mqtt_client.add_listen_topic(dev.listen_topic, dev.process_received_mqtt_data)  # type: ignore
         if settings.AHU_ENABLED:
-            self.ahu = ValloxAhu(ip="http://192.168.94.117/")
+            self.ahu = ValloxAhu(ip="http://192.168.94.118/")
 
     def set_up_ui(self) -> None:
         # Set up user interface
