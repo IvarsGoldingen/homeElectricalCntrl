@@ -181,10 +181,10 @@ class ValloxAhu(Subject):
         """
         Thread that will connect to AHU web server and  read the data and send it back to the main thread
         """
-        RECONNECT_IF_DATA_NOT_CHANGED_FOR_S = 180
-        MIN_TIME_BETWEEN_RECONNECTS_S = 300
+        RECONNECT_IF_DATA_NOT_CHANGED_FOR_S = 300
+        MIN_TIME_BETWEEN_RECONNECTS_S = 600
         # How often to read data from the web page
-        DATA_READ_PERIOD_S = 30
+        DATA_READ_PERIOD_S = 60
         NO_DATA_VALUE = global_var.NO_DATA_VALUE
         # Variables used to find values in the web page using selenium
         ELEM_XPATH_RH = "//div[@l10n-path='dashboard.profile.humidity']"
