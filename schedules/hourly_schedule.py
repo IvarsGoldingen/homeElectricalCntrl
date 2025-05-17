@@ -128,8 +128,9 @@ class HourlySchedule2days(Subject, StateSaver):
             # set all device auto cmds to true
             dev.set_auto_run(cmd)
 
-    def add_to_device_list(self, dev: Device):
+    def add_device(self, dev: Device):
         """
+         # Add a device to be controlled from this schedule
         :param dev: Device that will be turned on or off
         :return:
         """

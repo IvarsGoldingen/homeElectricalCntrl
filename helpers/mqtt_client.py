@@ -29,11 +29,16 @@ logger.addHandler(file_handler)
 def test():
     client = MyMqttClient()
     #client.add_listen_topic("#", test_cb)
-    client.add_listen_topic("shellypro3em-34987a446e54/#", test_cb)
+    # WSTRING#'/custom/raw/1234555'
+
+    client.add_listen_topic("/custom/raw/1234555/#", test_cb)
+    client.add_listen_topic("/custom/raw/1234555", test_cb)
+    client.add_listen_topic("/custom/raw/1234555/", test_cb)
     # client.add_listen_topic("shellyplus1-441793ab3fb4/#", test_cb)
     # client.add_listen_topic("shellyplus1pm-d48afc417d58/#", test_cb)
     # client.add_listen_topic("shellies/shellyplug-s-80646F840029/#", test_cb)
-    client.start(settings.MQTT_SERVER, settings.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
+    #client.start(settings.MQTT_SERVER, settings.MQTT_PORT, user=secrets.MQTT_USER, psw=secrets.MQTT_PSW)
+    client.start("99.80.109.221", 8989, user="will-1de6tl3gl.vs", psw="p10ethip73hldcvmh9l")
     device_bool = False
     test_cntr = 0
     try:
@@ -41,6 +46,9 @@ def test():
             time.sleep(0.5)
             client.loop()
             test_cntr += 1
+            if test_cntr == 10:
+                print("Posting")
+                client.publish("/custom/raw/1234", "test")
             # if test_cntr % 20 == 0:
             #     if not device_bool:
             #         print("turning on")

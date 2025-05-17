@@ -4,6 +4,7 @@ from collections.abc import Callable
 from schedules.hourly_schedule import HourlySchedule2days
 from schedules.auto_schedule_creator import AutoScheduleCreator
 from schedules.daily_timed_schedule import DailyTimedSchedule
+from schedules.schedule_protocol import ScheduleWithDevice
 from devices.device import Device
 from devices.shellyPlugUrlControlled import URLControlledShellyPlug
 from devices.deviceTypes import DeviceType
@@ -39,6 +40,8 @@ Configuration file expected like below:
 ]
 type must be from schedules.schedule_types Enum
 """
+
+ASSIGNED_DEV_KEY = "assigned_device"
 
 def test_fc() -> None:
     file_path = os.path.join(settings.SCH_CONFIG_FILE_LOCATION, settings.SCH_CONFIG_FILE_NAME)
@@ -78,7 +81,10 @@ def get_sch_list_from_dic_list(sch_dic_list: list[dict],
     sch_list: list = []
     for sch_dic in sch_dic_list:
         if sch_dic["type"] == ScheduleType.HOURLY_SCHEDULE_2_DAYS.name:
-            sch_list.append(HourlySchedule2days(name=sch_dic["name"]))
+            sch_2d = HourlySchedule2days(name=sch_dic["name"])
+            assigned_dev_name = sch_dic[ASSIGNED_DEV_KEY]
+            _assign_dev_to_sch_by_name(sch_2d, assigned_dev_name, dev_list)
+            sch_list.append(sch_2d)
         elif sch_dic["type"] == ScheduleType.AUTO_SCHEDULE_CREATOR.name:
             assigned_schedule_name = sch_dic["assigned_schedule"]
             assigned_sch = None
@@ -92,17 +98,34 @@ def get_sch_list_from_dic_list(sch_dic_list: list[dict],
         elif sch_dic["type"] == ScheduleType.DAILY_TIMED_SCHEDULE.name:
             logger.debug("DAILY_TIMED_SCHEDULE")
             daily_schedule = DailyTimedSchedule(name=sch_dic["name"])
-            assigned_dev_name = sch_dic["assigned_device"]
-            if assigned_dev_name:
-                assigned_dev = next((dev for dev in dev_list if dev.name == assigned_dev_name),None)
-                if not assigned_dev:
-                    raise Exception(
-                        f"The assigned device for DAILY_TIMED_SCHEDULE does not exist: {assigned_dev_name}")
-                daily_schedule.add_device(assigned_dev)
+            assigned_dev_name = sch_dic[ASSIGNED_DEV_KEY]
+            _assign_dev_to_sch_by_name(daily_schedule, assigned_dev_name, dev_list)
+            # if assigned_dev_name:
+            #     assigned_dev = next((dev for dev in dev_list if dev.name == assigned_dev_name),None)
+            #     if not assigned_dev:
+            #         raise Exception(
+            #             f"The assigned device for DAILY_TIMED_SCHEDULE does not exist: {assigned_dev_name}")
+            #     daily_schedule.add_device(assigned_dev)
             sch_list.append(daily_schedule)
         else:
             raise Exception("Schedule file contains unknown device type")
     return sch_list
+
+
+def _assign_dev_to_sch_by_name(sch:ScheduleWithDevice, dev_name: str, dev_list: list[Device]) -> None:
+    """
+    :param sch: schedule to which to add the device
+    :param dev_name: device name to add
+    :param dev_list: list of devices, device object is gotten frrom here by name
+    :return:
+    """
+    if dev_name:
+        assigned_dev = next((dev for dev in dev_list if dev.name == dev_name), None)
+        if not assigned_dev:
+            raise Exception(
+                f"The assigned device for DAILY_TIMED_SCHEDULE does not exist: {dev_name}")
+        sch.add_device(assigned_dev)
+
 
 def get_schedule_json_from_file(file_path: str) -> list[dict]:
     """
