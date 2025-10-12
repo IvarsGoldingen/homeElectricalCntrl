@@ -2,9 +2,14 @@ import os
 import datetime
 import logging
 import time
+import random
+import re
+from xmlrpc.client import DateTime
+
 from helpers.get_nordpool import NordpoolGetter
 from helpers.observer_pattern import Subject
 import settings
+from price_objects import DayPrices, HourPrice
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -25,26 +30,21 @@ logger.addHandler(file_handler)
 
 def test():
     test_loc = "C:\\py_related\\home_el_cntrl\\price_lists"
-    # random_real_list = [random.uniform(0.00, 300.0) for _ in range(24)]
-    # date = datetime.date.today() + datetime.timedelta(days=3)
-    # list_of_prices, date_of_prices = NordpoolGetter.get_price_list()
+    day_prices = DayPrices(datetime.date.today() + datetime.timedelta(days=1))
+    random_real_list = [random.uniform(0.00, 300.0) for _ in range(96)]
+    day_prices.load_from_flat_list(random_real_list)
     mngr = PriceFileManager(test_loc)
+    mngr.create_files_from_nordpool_price_list(day_prices)
+    # list_of_prices, date_of_prices = NordpoolGetter.get_price_list()
     # mngr.create_files_from_nordpool_price_list(random_real_list, date)
     # mngr.delete_old_incorrect_price_files()
-    prices_today, prices_tomorrow = mngr.get_prices_today_tomorrow()
-    print("Today")
-    for hour, price in prices_today.items():
-        print(f"{hour}\t{price}")
-    print("Tomorrow")
-    for hour, price in prices_tomorrow.items():
-        print(f"{hour}\t{price}")
+    # prices_today, prices_tomorrow = mngr.get_prices_today_tomorrow()
 
 
 class PriceFileManager(Subject):
     """
     TODO:
     Possibly hold all available prices in global variables since the prices may be accessed often
-    Instead of using todays and tomorrows dictionary save prices in a data class
     """
     PRICE_FILE_EXTENSION = ".prc"
     NORDPOOL_PRICE_OFSET_HOURS = 1
@@ -103,7 +103,7 @@ class PriceFileManager(Subject):
         """
         # For today just try to read the file, if it does not exist there will be an empty dict
         date_today = datetime.date.today()
-        prices_today = self.read_prices_file_into_dict(self.create_date_file_path(date_today))
+        prices_today = self.get_prices_from_file(self.create_date_file_path(date_today), date_today)
         logger.debug(f"Getting prices:")
         logger.debug(f"Prices today {prices_today}")
         # For tomorrow it is possible to check if nordpool has the prices if there is no file yet or if the file has too
@@ -112,9 +112,9 @@ class PriceFileManager(Subject):
         logger.debug(f"Prices tomorrow {prices_tomorrow}")
         return prices_today, prices_tomorrow
 
-    def get_prices_tomorrow_from_file(self) -> dict:
+    def get_prices_tomorrow_from_file(self) -> DayPrices:
         date_tomorrow = datetime.date.today() + datetime.timedelta(days=1)
-        prices_tomorrow = self.read_prices_file_into_dict(self.create_date_file_path(date_tomorrow))
+        prices_tomorrow = self.get_prices_from_file(self.create_date_file_path(date_tomorrow), date_tomorrow)
         return prices_tomorrow
 
     def check_for_tomorrows_prices(self):
@@ -149,29 +149,27 @@ class PriceFileManager(Subject):
 
     def check_if_tomorrows_prices_in_file(self):
         prices_tomorrow = self.get_prices_tomorrow_from_file()
-        if len(prices_tomorrow) < (24 - self.NORDPOOL_PRICE_OFSET_HOURS):
+        if len(prices_tomorrow.hours) < (24 - self.NORDPOOL_PRICE_OFSET_HOURS):
             self.tomorrow_prices_available = False
             return False
         # Tomorrows prices in file
         self.tomorrow_prices_available = True
         return True
 
-    def get_prices_tomorrow_from_np(self):
+    def get_prices_tomorrow_from_np(self) -> DayPrices:
         if not self.check_new_np_req_allowed():
             # New NP req not allowed
-            return
-        date_tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+            return None
         self.time_of_last_np_poll = time.perf_counter()
-        list_of_prices, date_of_prices = NordpoolGetter.get_tomorrow_price_list()
-        if list_of_prices is None or date_of_prices is None:
+        tomorrow_prices = NordpoolGetter.get_tomorrow_price_list()
+        if tomorrow_prices is None:
             logger.debug("Failed to get prices from nordpool")
             return None
         else:
             logger.debug("Succesfully got prices from nordpool")
-            self.create_files_from_nordpool_price_list(list_of_prices, date_of_prices)
-            prices_tomorrow = self.read_prices_file_into_dict(self.create_date_file_path(date_tomorrow))
+            self.create_files_from_nordpool_price_list(tomorrow_prices)
             self.tomorrow_prices_available = True
-            return prices_tomorrow
+            return tomorrow_prices
 
     def check_new_np_req_allowed(self):
         time_now = time.perf_counter()
@@ -182,30 +180,32 @@ class PriceFileManager(Subject):
         logger.debug("New NP poll NOT allowed")
         return False
 
-    def read_prices_file_into_dict(self, file_path) -> dict:
+    def get_prices_from_file(self, file_path: str, date: datetime.date) -> DayPrices:
         """
-        Read price file and create a dictionary of a days prices
-        Key being  the hour price is for and the value being the price itself
+        Read price file and create a DayPrices object
         :param file_path:
         :return:
         """
-        price_dict = {}
+        prices = DayPrices(date)
         if os.path.exists(file_path):
             with open(file_path, 'r') as file:
                 for line in file:
-                    # go through price file line by line
-                    stripped_line = line.strip()
-                    if stripped_line != "":
-                        # line not empty
-                        try:
-                            hour_str, price_str = stripped_line.split(":")
-                            hour = int(hour_str)
-                            price = float(price_str)
-                            price_dict[hour] = price
-                        except ValueError:
-                            logger.error(f"Price file not valid {file_path}")
-                            return {}
-        return price_dict
+                    line = line.strip()
+                    # Match "13: [10.5, 10.8, 11.0, 10.9]"
+                    match = re.match(r"(\d+):\s*\[(.*?)]", line)
+                    if match:
+                        hour_str, quarter_values = match.groups()
+                        current_hour = int(hour_str)
+                        values = [float(x.strip()) for x in quarter_values.split(",")]
+                        # Ensure valid structure
+                        if len(values) != 4:
+                            raise ValueError(f"Expected 4 quarter values, got {len(values)} in line: {line}")
+                        # Assign prices to corresponding hour slot
+                        if 0 <= current_hour < 24:
+                            for q, v in enumerate(values):
+                                prices.set_price(current_hour, q, v)
+                return prices
+        return None
 
     def delete_old_incorrect_price_files(self):
         """
@@ -259,19 +259,19 @@ class PriceFileManager(Subject):
         day_after_tomorrow_file_path = self.create_date_file_name(day_after_tomorrow)
         return [today_file_path, tomorrow_file_path, day_after_tomorrow_file_path]
 
-    def create_files_from_nordpool_price_list(self, price_list: list, date: datetime.date):
+    def create_files_from_nordpool_price_list(self, prices: DayPrices):
         """
-        :param price_list: list of electricity prices
-        :param date: date from Nordpool of the price list
-        :return:
+        :param prices from Nordpool
         Nordpool prices come ofset to local time, so price list must be devided between the date from nordpool and
         the next day
         """
         self.delete_old_incorrect_price_files()
-        list_for_day_of = price_list[:(24 - self.NORDPOOL_PRICE_OFSET_HOURS)]
-        list_for_next_day = price_list[-self.NORDPOOL_PRICE_OFSET_HOURS:]
-        date_for_next_day = date + datetime.timedelta(days=1)
-        today_file_path = self.create_date_file_path(date)
+        # Nordpool gives prices with ofset from local time.
+        # In Latvia 23 hour for next day received and 1 hour for the day after
+        list_for_day_of = prices.hours[:(24 - self.NORDPOOL_PRICE_OFSET_HOURS)]
+        list_for_next_day = prices.hours[-self.NORDPOOL_PRICE_OFSET_HOURS:]
+        date_for_next_day = prices.date + datetime.timedelta(days=1)
+        today_file_path = self.create_date_file_path(prices.date)
         next_day_file_path = self.create_date_file_path(date_for_next_day)
         # Todays file can have values from the previous day's nordpool prices
         self.check_prices_file(today_file_path, self.NORDPOOL_PRICE_OFSET_HOURS)
@@ -280,7 +280,7 @@ class PriceFileManager(Subject):
         self.delete_file(next_day_file_path)
         self.write_prices_file(list_for_next_day, next_day_file_path, 0)
 
-    def write_prices_file(self, price_list: list, file_path: str, start_hour: int):
+    def write_prices_file(self, price_list: list[HourPrice], file_path: str, start_hour: int):
         """
         :param price_list: price list to write
         :param file_path: file path
@@ -290,8 +290,10 @@ class PriceFileManager(Subject):
         hour = start_hour
         try:
             with open(file_path, "a+") as file:
-                for price in price_list:
-                    file.write(f"{hour}:{price}\n")
+                for hour_prices in price_list:
+                    # Format: 13 -> [10.5, 11.0, 9.8, 10.1]
+                    formatted_quarters = ", ".join(str(p) for p in hour_prices.quarters)
+                    file.write(f"{hour}:{formatted_quarters}\n")
                     hour += 1
         except FileNotFoundError:
             logger.error("No folder to write price list")
@@ -320,8 +322,6 @@ class PriceFileManager(Subject):
                         try:
                             hour_str, price_str = stripped_line.split(":")
                             hour = int(hour_str)
-                            # not used but check if can be cast to float
-                            price = float(price_str)
                             if hour == expected_hour:
                                 nr_of_prices += 1
                                 if nr_of_prices > max_nr_of_prices_in_file:

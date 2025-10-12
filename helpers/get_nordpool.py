@@ -1,13 +1,11 @@
-import datetime
 from datetime import date
 import math
 import logging
 import requests
-from nordpool import elspot, elbas
-from typing import List, Dict, Tuple
+from nordpool import elspot
 import os
 import settings
-from price_objects import HourPrice, DayPrices
+from price_objects import DayPrices
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -26,7 +24,7 @@ logger.addHandler(file_handler)
 
 
 def test():
-    day_prices = NordpoolGetter.get_tomorrow_price_list()
+    NordpoolGetter.get_tomorrow_price_list()
 
 
 class NordpoolGetter:
