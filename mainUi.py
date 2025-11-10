@@ -150,7 +150,7 @@ class MainUIClass(Tk, Observer):
     def mainloop_user(self) -> None:
         # TKinter loop not used, instead Timer from Threading used
         # Start the loop again after delay
-        self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)
+        self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)# type: ignore
 
     def mqtt_threaded_loop(self) -> None:
         # Periodically call mqtt_client loop
@@ -197,14 +197,13 @@ class MainUIClass(Tk, Observer):
     def setup_schedules(self) -> None:
         self.schedule_list = get_schedule_list_from_file(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                          dev_list=self.dev_list,
-                                                         file_path=os.path.join(settings.SCH_CONFIG_FILE_LOCATION,
+                                                         file_path=os.path.join(settings.SCH_CONFIG_FILE_LOCATION,# type: ignore
                                                                                 settings.SCH_CONFIG_FILE_NAME))# type: ignore
     # noinspection PyAttributeOutsideInit
     def setup_devices(self) -> None:
         # Setup automation devices
         self.dev_list = get_device_list_from_file(mqtt_publish_method=self.mqtt_client.publish,
-                                                  file_path=os.path.join(settings.DEV_CONFIG_FILE_LOCATION,
-                                                                         # type: ignore
+                                                  file_path=os.path.join(settings.DEV_CONFIG_FILE_LOCATION,# type: ignore
                                                                          settings.DEV_CONFIG_FILE_NAME))# type: ignore
         for dev in self.dev_list:
             if dev.device_type == DeviceType.SHELLY_PLUG or \
@@ -224,25 +223,18 @@ class MainUIClass(Tk, Observer):
         self.prepare_ui_elements()
         self.place_ui_elements()
         # Start TKinter inherited inbuilt loop
-        self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)
+        self.after(self.MAINLOOP_OTHER_INTERVAL_MS, self.mainloop_user)# type: ignore
 
     def populate_ui_with_el_prices(self) -> None:
         # Set electrical price data in the user interface
         # Values received as dictionaries, widget needs a list
         prices_today, prices_tomorrow = self.price_mngr.get_prices_today_tomorrow()
-        # Have dummy values ready for items that are not received
-        price_list_today, price_list_tomorrow = [self.DUMMY_PRICE_VALUE] * 24, [self.DUMMY_PRICE_VALUE] * 24
-        for hour, value in prices_today.items():
-            price_list_today[hour] = value
-        for hour, value in prices_tomorrow.items():
-            price_list_tomorrow[hour] = value
-        # TODO: Handle getting the widget better - add class attribute associate prices or something
         # Find 2 day schedule which should show electricity prices
         schedule_2day_w_prices = next(
             (sch_widget for sch_widget in self.sch_widgets if isinstance(sch_widget, Schedule2DaysWidget)), None)
         # Set the prices on the schedule so they are visible in the UI
         if schedule_2day_w_prices:
-            schedule_2day_w_prices.add_price_to_hourly_checkbox_label(price_list_today, price_list_tomorrow)
+            schedule_2day_w_prices.add_price_to_hourly_checkbox_label(prices_today, prices_tomorrow)
 
     # noinspection PyAttributeOutsideInit
     def prepare_ui_elements(self) -> None:
@@ -308,7 +300,7 @@ class MainUIClass(Tk, Observer):
                                                          display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
                 sch.register(hourly_2day_widget, HourlySchedule2days.event_name_schedule_change)
                 sch.register(hourly_2day_widget, HourlySchedule2days.event_name_new_device_associated)
-                sch.register(hourly_2day_widget, HourlySchedule2days.event_name_hour_changed)
+                sch.register(hourly_2day_widget, HourlySchedule2days.event_name_period_changed)
                 self.sch_widgets.append(hourly_2day_widget)
             elif isinstance(sch, AutoScheduleCreator):
                 auto_sch_creator = AutoHourlyScheduleCreatorWidget(parent=self.frame_widgets_bottom,

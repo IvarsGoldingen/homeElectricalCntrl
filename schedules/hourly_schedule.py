@@ -24,21 +24,6 @@ file_handler.setFormatter(log_formatter)
 file_handler.setLevel(settings.FILE_LOG_LEVEL)
 logger.addHandler(file_handler)
 
-
-def test():
-    cntr = 0
-    try:
-        sch = HourlySchedule2days("Test schedule")
-        sch.set_schedule_hour_off_on(today_tomorrow=True, hour=12, cmd=True)
-        sch.set_schedule_hour_off_on(today_tomorrow=True, hour=1, cmd=True)
-        while (True):
-            sch.loop()
-            cntr += 1
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("Test stopped")
-
-
 class HourlySchedule2days(Subject, StateSaver):
     """
     Class for controlling devices in an hourly schedule for today and tomorrow
@@ -46,7 +31,7 @@ class HourlySchedule2days(Subject, StateSaver):
 
     event_name_schedule_change = "schedule_changed"
     event_name_new_device_associated = "new_device_associated"
-    event_name_hour_changed = "hour_change"
+    event_name_period_changed = "period_change"
 
     def __init__(self, name: str, state_file_loc: str = "C:\\py_related\\home_el_cntrl\\state"):
         """
@@ -55,13 +40,15 @@ class HourlySchedule2days(Subject, StateSaver):
         super().__init__()
         self.name = name
         self.state_file_loc = state_file_loc
-        # Dictionarries holding keys from 0 to 23 representing hours in each day
-        # If the value of a hour key is true device should be on for that hour
-        self.schedule_today = {key: False for key in range(24)}
-        self.schedule_tomorrow = {key: False for key in range(24)}
+        # Dictionarries holding keys from 0 to 96 representing 15 min periods in each day
+        # If the value of a period index key is true device should be on for that period
+        self.schedule_today = {key: False for key in range(96)}
+        self.schedule_tomorrow = {key: False for key in range(96)}
         self.datetime_now = datetime.date.today()
         # To display in UI
         self.current_hour = datetime.datetime.now().hour
+        self.current_minute = datetime.datetime.now().minute
+        self.current_period = (self.current_hour * 4)  +  (self.current_minute // 15)
         self.load_state()
         # Devices linked to this schedule - used to execute schedule
         self.device_list: Optional[List[Device]] = []
@@ -104,17 +91,19 @@ class HourlySchedule2days(Subject, StateSaver):
         """
         self.check_if_new_day()
         hour_now = datetime.datetime.now().hour
-        expected_state = self.schedule_today[hour_now]
+        minute_now = datetime.datetime.now().minute
+        expected_state = self.schedule_today[(hour_now * 4) + (minute_now//15)]
         self.set_device_cmds(expected_state)
-        self.check_hour_change(hour_now)
+        self.check_period_change_change(hour_now, minute_now)
 
-    def check_hour_change(self, hour_now: int):
+    def check_period_change_change(self, hour_now: int, minute_now: int):
         """
-        Check if hour has changed, so UI can display current hour
+        Check if 15 minute period has changed, so UI can display current hour
         """
-        if hour_now != self.current_hour:
-            self.current_hour = hour_now
-            self.notify_observers(HourlySchedule2days.event_name_hour_changed)
+        current_period = (hour_now * 4) + (minute_now // 15)
+        if current_period != self.current_period:
+            self.current_period = current_period
+            self.notify_observers(HourlySchedule2days.event_name_period_changed)
 
     def set_device_cmds(self, cmd: bool):
         """
@@ -137,21 +126,18 @@ class HourlySchedule2days(Subject, StateSaver):
         self.device_list.append(dev)
         self.notify_observers(self.event_name_new_device_associated)
 
-    def set_schedule_hour_off_on(self, today_tomorrow: bool, hour: int, cmd: bool):
+    def set_schedule_period_off_on(self, today_tomorrow: bool, period: int, cmd: bool):
         """
         :param today_tomorrow: false if value for today, true if for tomorrow
-        :param hour: hour to set
+        :param period: period to set
         :param cmd: if a device should be on or off for that hour
         :return:
         """
         logger.debug(f"Schedule single hour change")
-        if hour > 23 or hour < 0:
-            logger.error("Invalid hour set")
-            return
         if not today_tomorrow:
-            self.schedule_today[hour] = cmd
+            self.schedule_today[period] = cmd
         else:
-            self.schedule_tomorrow[hour] = cmd
+            self.schedule_tomorrow[period] = cmd
         self.save_state()
         logger.debug(f"Schedule today: {self.schedule_today}")
         logger.debug(f"Schedule tomorrow: {self.schedule_tomorrow}")
@@ -165,7 +151,7 @@ class HourlySchedule2days(Subject, StateSaver):
         :return:
         """
         logger.debug(f"Schedule full day change")
-        if len(schedule) != 24:
+        if len(schedule) != 96:
             logger.error("Invalid schedule set")
             return
         if not today_tomorrow:
@@ -176,13 +162,6 @@ class HourlySchedule2days(Subject, StateSaver):
             self.schedule_tomorrow.update(schedule)
         self.save_state()
         self.notify_observers(self.event_name_schedule_change)
-
-    def get_current_expected_state(self):
-        """
-        :return: true if device should be on
-        """
-        current_hour = datetime.datetime.now().hour
-        return self.schedule_today[current_hour]
 
     def check_if_new_day(self):
         """

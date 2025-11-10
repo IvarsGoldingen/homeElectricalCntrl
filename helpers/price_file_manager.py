@@ -9,7 +9,7 @@ from xmlrpc.client import DateTime
 from helpers.get_nordpool import NordpoolGetter
 from helpers.observer_pattern import Subject
 import settings
-from price_objects import DayPrices, HourPrice
+from helpers.price_objects import DayPrices, HourPrice
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
@@ -30,12 +30,15 @@ logger.addHandler(file_handler)
 
 def test():
     test_loc = "C:\\py_related\\home_el_cntrl\\price_lists"
-    day_prices = DayPrices(datetime.date.today() + datetime.timedelta(days=1))
-    random_real_list = [random.uniform(0.00, 300.0) for _ in range(96)]
-    day_prices.load_from_flat_list(random_real_list)
+    # day_prices = DayPrices(datetime.date.today() + datetime.timedelta(days=1))
+    # random_real_list = [random.uniform(0.00, 300.0) for _ in range(96)]
+    # day_prices.load_from_flat_list(random_real_list)
     mngr = PriceFileManager(test_loc)
-    mngr.create_files_from_nordpool_price_list(day_prices)
-    # list_of_prices, date_of_prices = NordpoolGetter.get_price_list()
+    mngr.loop()
+    today, tomorrow = mngr.get_prices_today_tomorrow()
+    print(today)
+    print(tomorrow)
+    # mngr.create_files_from_nordpool_price_list(day_prices)
     # mngr.create_files_from_nordpool_price_list(random_real_list, date)
     # mngr.delete_old_incorrect_price_files()
     # prices_today, prices_tomorrow = mngr.get_prices_today_tomorrow()
@@ -49,8 +52,8 @@ class PriceFileManager(Subject):
     PRICE_FILE_EXTENSION = ".prc"
     NORDPOOL_PRICE_OFSET_HOURS = 1
     # Time at which tomorrow's NP prices expected to be available
-    TOMORROW_AVAILABLE_EARLIEST_HOUR = 15
-    TOMORROW_AVAILABLE_EARLIEST_MINUTE = 55
+    TOMORROW_AVAILABLE_EARLIEST_HOUR = 14
+    TOMORROW_AVAILABLE_EARLIEST_MINUTE = 30
     # To limit how often np gets polled
     MIN_NP_POLL_TIME_SEC = 900  # 900 = 15 min
     # event names as this class extends from subject
@@ -96,7 +99,7 @@ class PriceFileManager(Subject):
         self.datetime_now = actual_today
         self.notify_observers(self.event_name_prices_changed)
 
-    def get_prices_today_tomorrow(self) -> [dict, dict]:
+    def get_prices_today_tomorrow(self) -> [DayPrices, DayPrices]:
         """
         today and tomorrow prices are the prices in the dictionary. Key is hour, value is price for that hour
         :return:
@@ -149,6 +152,8 @@ class PriceFileManager(Subject):
 
     def check_if_tomorrows_prices_in_file(self):
         prices_tomorrow = self.get_prices_tomorrow_from_file()
+        if not prices_tomorrow:
+            return False
         if len(prices_tomorrow.hours) < (24 - self.NORDPOOL_PRICE_OFSET_HOURS):
             self.tomorrow_prices_available = False
             return False
@@ -191,8 +196,8 @@ class PriceFileManager(Subject):
             with open(file_path, 'r') as file:
                 for line in file:
                     line = line.strip()
-                    # Match "13: [10.5, 10.8, 11.0, 10.9]"
-                    match = re.match(r"(\d+):\s*\[(.*?)]", line)
+                    # Match "13: 10.5, 10.8, 11.0, 10.9"
+                    match = re.match(r"(\d+):\s*(.*)", line)
                     if match:
                         hour_str, quarter_values = match.groups()
                         current_hour = int(hour_str)

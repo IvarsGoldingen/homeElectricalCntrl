@@ -5,7 +5,7 @@ import requests
 from nordpool import elspot
 import os
 import settings
-from price_objects import DayPrices
+from helpers.price_objects import DayPrices
 
 # Setup logging
 log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')

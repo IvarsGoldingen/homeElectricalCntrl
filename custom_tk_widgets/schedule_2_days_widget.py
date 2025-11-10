@@ -2,9 +2,11 @@ from functools import partial
 import os
 import logging
 import tkinter as tk
+from tkinter import ttk
 from tkinter import Label, font, Frame, Checkbutton, BooleanVar
 from schedules.hourly_schedule import HourlySchedule2days
 from helpers.observer_pattern import Observer
+from helpers.price_objects import DayPrices
 import settings
 
 # Setup logging
@@ -42,9 +44,9 @@ class Schedule2DaysWidget(tk.Frame, Observer):
         # SChedule asociated with the widget
         self.schedule = schedule
         # UI objects containing the checkboxes
-        self.frame_list_today, self.lbl_check_box_list_today, self.checkbox_value_list_today, \
+        self.frame_list_today, self.lbl_prices_check_box_list_today, self.checkbox_value_list_today, \
             self.checkbox_list_today = [], [], [], []
-        self.frame_list_tomorrow, self.lbl_check_box_list_tomorrow, self.checkbox_value_list_tomorrow, \
+        self.frame_list_tomorrow, self.lbl_prices_check_box_list_tomorrow, self.checkbox_value_list_tomorrow, \
             self.checkbox_list_tomorrow = [], [], [], []
         self.frame_today, self.frame_tomorrow = Frame(self), Frame(self)
         self._prepare_widget_elements()
@@ -54,49 +56,64 @@ class Schedule2DaysWidget(tk.Frame, Observer):
 
     def _place_widget_elements(self):
         for nr, frame in enumerate(self.frame_list_today):
-            self.lbl_check_box_list_today[nr].grid(row=0, column=0)
-            self.checkbox_list_today[nr].grid(row=1, column=0)
+            # Static text of hour on top
+            Label(frame, text=f"{nr:02}:00",width=self.HOUR_WIDTH).grid(row=0, column=0)
+            # 4 price labels and 4 checkboxes
+            for j in range(4):
+                self.lbl_prices_check_box_list_today[nr * 4 + j].grid(row=j*2+1, column=0)
+                self.checkbox_list_today[nr * 4 + j].grid(row=j*2 + 2, column=0)
             frame.grid(row=0, column=nr)
         # checkbox tomorrow list
         for nr, frame in enumerate(self.frame_list_tomorrow):
-            self.lbl_check_box_list_tomorrow[nr].grid(row=0, column=0)
-            self.checkbox_list_tomorrow[nr].grid(row=1, column=0)
+            # Static text of hour on top
+            Label(frame, text=f"{nr:02}:00",width=self.HOUR_WIDTH).grid(row=0, column=0)
+            for j in range(4):
+                self.lbl_prices_check_box_list_tomorrow[nr * 4 + j].grid(row=j*2+1, column=0)
+                self.checkbox_list_tomorrow[nr * 4 + j].grid(row=j*2 + 2, column=0)
             frame.grid(row=0, column=nr)
         self.lbl_name.grid(row=0, column=0)
         self.lbl_associated_device.grid(row=1, column=0)
         self.frame_today.grid(row=2, column=0)
-        self.frame_tomorrow.grid(row=3, column=0)
+        ttk.Separator(self, orient='horizontal').grid(row=3, column=0, columnspan=4, sticky='ew', pady=5)
+        self.frame_tomorrow.grid(row=4, column=0)
 
     def _prepare_widget_elements(self):
         bold_font = font.Font(family="Helvetica", size=12, weight="bold")
         self.lbl_name = Label(self, text=self.schedule.name, font=bold_font)
         self.lbl_associated_device = Label(self, text="No devices associated with schedule")
+        # Prepare elements for displaying hourly prices
         for i in range(24):
+            # Today
+            # Frame holds data for a particular hour
             self.frame_list_today.append(Frame(self.frame_today))
-            self.checkbox_value_list_today.append(BooleanVar())
-            self.checkbox_list_today.append(Checkbutton(self.frame_list_today[i],
-                                                        variable=self.checkbox_value_list_today[i],
-                                                        onvalue=True,
-                                                        offvalue=False,
-                                                        command=partial(self.checkbox_value_changed,
-                                                                        nr=i, day=self.KEY_TODAY)))
-            self.lbl_check_box_list_today.append(Label(self.frame_list_today[i], text=f"{i:02}:00",
-                                                       width=self.HOUR_WIDTH))
+            # Each hour holds values for 4x15 minute periods
+            for j in range(4):
+                self.checkbox_value_list_today.append(BooleanVar())
+                self.checkbox_list_today.append(Checkbutton(self.frame_list_today[i],
+                                                            variable=self.checkbox_value_list_today[i * 4 + j],
+                                                            onvalue=True,
+                                                            offvalue=False,
+                                                            command=partial(self.checkbox_value_changed,
+                                                                            nr=i * 4 + j, day=self.KEY_TODAY)))
+                self.lbl_prices_check_box_list_today.append(Label(self.frame_list_today[i], text=f"-9.99",
+                                                                  width=self.HOUR_WIDTH))
+            # tomorrow
             self.frame_list_tomorrow.append(Frame(self.frame_tomorrow))
-            self.checkbox_value_list_tomorrow.append(BooleanVar())
-            self.checkbox_list_tomorrow.append(Checkbutton(self.frame_list_tomorrow[i],
-                                                           variable=self.checkbox_value_list_tomorrow[i],
-                                                           onvalue=True,
-                                                           offvalue=False,
-                                                           command=partial(self.checkbox_value_changed,
-                                                                           nr=i, day=self.KEY_TOMORROW)))
-            self.lbl_check_box_list_tomorrow.append(Label(self.frame_list_tomorrow[i], text=f"{i:02}:00",
-                                                          width=self.HOUR_WIDTH))
+            for j in range(4):
+                self.checkbox_value_list_tomorrow.append(BooleanVar())
+                self.checkbox_list_tomorrow.append(Checkbutton(self.frame_list_tomorrow[i],
+                                                               variable=self.checkbox_value_list_tomorrow[i * 4 + j],
+                                                               onvalue=True,
+                                                               offvalue=False,
+                                                               command=partial(self.checkbox_value_changed,
+                                                                               nr=i * 4 + j, day=self.KEY_TOMORROW)))
+                self.lbl_prices_check_box_list_tomorrow.append(Label(self.frame_list_tomorrow[i], text=f"-9.99",
+                                                                     width=self.HOUR_WIDTH))
 
     def handle_subject_event(self, event_type: str, **kwargs):
         # The subject has notified this of an eve
         logger.debug(f"Widget notified of an event {event_type}")
-        if event_type == self.schedule.event_name_hour_changed:
+        if event_type == self.schedule.event_name_period_changed:
             self.indicate_current_hour()
         else:
             self.update_widget()
@@ -106,12 +123,12 @@ class Schedule2DaysWidget(tk.Frame, Observer):
         self.update_associated_device()
 
     def indicate_current_hour(self):
-        for hour, checkbox_label in enumerate(self.lbl_check_box_list_today):
-            if hour == self.schedule.current_hour:
+        # Determine current 15-minute slot index
+        current_index = self.schedule.current_hour * 4 + self.schedule.current_minute // 15
+        for i, checkbox_label in enumerate(self.lbl_prices_check_box_list_today):
+            if i == current_index:
                 checkbox_label.configure(font=("Segoe UI", 9, "bold"))
-                # indicate current hour
             else:
-                # clear indication for all other
                 checkbox_label.configure(font=("Segoe UI", 9, "normal"))
 
     def update_associated_device(self):
@@ -127,21 +144,22 @@ class Schedule2DaysWidget(tk.Frame, Observer):
                                                self.schedule.schedule_tomorrow.values()):
             checkbox_value.set(hour_off_on)
 
-    def add_price_to_hourly_checkbox_label(self, price_list_today: list[float], price_list_tomorrow: list[float]):
+    def add_price_to_hourly_checkbox_label(self, prices_today: DayPrices, prices_tomorrow: DayPrices):
         logger.debug("Adding price for hours")
-        if len(price_list_today) != 24 or len(price_list_tomorrow) != 24:
-            logger.error("Unexpected additional text list for hours")
-            # expected new text for each hour
-            return
+
         decimal_places = 3 if self.display_price_per_kwh else 2
-        for hour, (lbl, price) in enumerate(zip(self.lbl_check_box_list_today, price_list_today)):
-            price = self.convert_price_per_mwh_to_kwh(price) if self.display_price_per_kwh else price
-            price = round(price, decimal_places)
-            lbl.config(text=f"{hour:02}:00\r{price}")
-        for hour, (lbl, price) in enumerate(zip(self.lbl_check_box_list_tomorrow, price_list_tomorrow)):
-            price = self.convert_price_per_mwh_to_kwh(price) if self.display_price_per_kwh else price
-            price = round(price, decimal_places)
-            lbl.config(text=f"{hour:02}:00\r{price}")
+        if prices_today:
+            for period_index, lbl in enumerate(self.lbl_prices_check_box_list_today):
+                price = prices_today.get_price(hour=period_index//4, quarter=period_index%4)
+                price = self.convert_price_per_mwh_to_kwh(price) if self.display_price_per_kwh else price
+                price = round(price, decimal_places)
+                lbl.config(text=f"{price}")
+        if prices_tomorrow:
+            for period_index, lbl in enumerate(self.lbl_prices_check_box_list_tomorrow):
+                price = prices_tomorrow.get_price(hour=period_index//4, quarter=period_index%4)
+                price = self.convert_price_per_mwh_to_kwh(price) if self.display_price_per_kwh else price
+                price = round(price, decimal_places)
+                lbl.config(text=f"{price}")
 
     def convert_price_per_mwh_to_kwh(self, value):
         try:
@@ -160,9 +178,9 @@ class Schedule2DaysWidget(tk.Frame, Observer):
         """
         if day == self.KEY_TODAY:
             value = self.checkbox_value_list_today[nr].get()
-            self.schedule.set_schedule_hour_off_on(today_tomorrow=False, hour=nr, cmd=value)
+            self.schedule.set_schedule_period_off_on(today_tomorrow=False, period=nr, cmd=value)
         elif day == self.KEY_TOMORROW:
             value = self.checkbox_value_list_tomorrow[nr].get()
-            self.schedule.set_schedule_hour_off_on(today_tomorrow=True, hour=nr, cmd=value)
+            self.schedule.set_schedule_period_off_on(today_tomorrow=True, period=nr, cmd=value)
         else:
             logger.error("Unknown day key")
