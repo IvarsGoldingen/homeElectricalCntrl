@@ -34,7 +34,7 @@ class AutoScheduleCreator(StateSaver):
     Class for repeatedly creating schedules to turn devices on or off for the upcoming hours
     """
 
-    # Auto schedule create periods allowed in hours
+    # Auto schedule create periods allowed in period count
     ALLOWED_PERIODS = [24, 32, 48, 96]
     # At what minute is the schedule created - 23:55, 15:55 ... for 8 hour period
     MINUTE_START_AT = 55
@@ -57,8 +57,8 @@ class AutoScheduleCreator(StateSaver):
         self._auto_create_period = 96
         self._hourly_schedule = hourly_schedule
         self._max_total_cost = max_total_cost
-        self._max_hours_to_run = max_periods_to_run
-        self._min_hours_to_run = min_periods_to_run
+        self._max_periods_to_run = max_periods_to_run
+        self._min_periods_to_run = min_periods_to_run
         self._calculation_time_h = calculation_time_h
         self._calculation_time_min = calculation_time_min
         self._period_split = period_split
@@ -75,16 +75,16 @@ class AutoScheduleCreator(StateSaver):
             logger.debug("Auto create disabled")
 
     def set_parameters(self,
-                       period_split: int = 8,
-                       max_total_cost: float = 50.0,
-                       max_periods_to_run: int = 4,
-                       min_periods_to_run: int = 0,
+                       period_split: int = 24,
+                       max_total_cost: float = 300.0,
+                       max_periods_to_run: int = 20,
+                       min_periods_to_run: int = 8,
                        calculation_time_h: int = 16,
                        calculation_time_min: int = 50):
         self._period_split = period_split
         self._max_total_cost = max_total_cost
-        self._max_hours_to_run = max_periods_to_run
-        self._min_hours_to_run = min_periods_to_run
+        self._max_periods_to_run = max_periods_to_run
+        self._min_periods_to_run = min_periods_to_run
         self._calculation_time_h = calculation_time_h
         self._calculation_time_min = calculation_time_min
         if self._auto_create_enabled:
@@ -95,7 +95,7 @@ class AutoScheduleCreator(StateSaver):
         return self._hourly_schedule.name
 
     def get_parameters(self):
-        return self._period_split, self._max_total_cost, self._max_hours_to_run, self._min_hours_to_run, \
+        return self._period_split, self._max_total_cost, self._max_periods_to_run, self._min_periods_to_run, \
             self._calculation_time_h, self._calculation_time_min
 
     def set_auto_create_enabled(self, off_on: bool):
@@ -129,8 +129,8 @@ class AutoScheduleCreator(StateSaver):
             max_total_cost=self._max_total_cost,
             period_split=self._period_split,
             periods_ahead_to_calculate=self._auto_create_period,
-            max_periods_to_run=self._max_hours_to_run,
-            min_periods_to_run=self._min_hours_to_run)
+            max_periods_to_run=self._max_periods_to_run,
+            min_periods_to_run=self._min_periods_to_run)
         if self._hourly_schedule:
             self._hourly_schedule.set_schedule_full_day(today_tomorrow=False, schedule=schedule_today)
             self._hourly_schedule.set_schedule_full_day(today_tomorrow=True, schedule=schedule_tomorrow)
@@ -147,10 +147,10 @@ class AutoScheduleCreator(StateSaver):
 
     def save_state(self):
         state_to_save = {
-            "period_split_h": self._period_split,
+            "period_split": self._period_split,
             "max_total_cost": self._max_total_cost,
-            "max_hours_to_run": self._max_hours_to_run,
-            "min_hours_to_run": self._min_hours_to_run,
+            "max_periods_to_run": self._max_periods_to_run,
+            "min_periods_to_run": self._min_periods_to_run,
             "calculation_time_h": self._calculation_time_h,
             "calculation_time_min": self._calculation_time_min,
             "_auto_create_enabled": self._auto_create_enabled,
@@ -166,10 +166,10 @@ class AutoScheduleCreator(StateSaver):
             return
         try:
             # Dictionary keys are read as strings from JSON, comvert them to ints
-            self._period_split = loaded_state["period_split_h"]
+            self._period_split = loaded_state["period_split"]
             self._max_total_cost = loaded_state["max_total_cost"]
-            self._max_hours_to_run = loaded_state["max_hours_to_run"]
-            self._min_hours_to_run = loaded_state["min_hours_to_run"]
+            self._max_periods_to_run = loaded_state["max_periods_to_run"]
+            self._min_periods_to_run = loaded_state["min_periods_to_run"]
             self._calculation_time_h = loaded_state["calculation_time_h"]
             self._calculation_time_min = loaded_state["calculation_time_min"]
             self._auto_create_period = loaded_state["_auto_create_period"]

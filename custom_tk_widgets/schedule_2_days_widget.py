@@ -123,12 +123,13 @@ class Schedule2DaysWidget(tk.Frame, Observer):
         self.update_associated_device()
 
     def indicate_current_hour(self):
-        # Determine current 15-minute slot index
-        current_index = self.schedule.current_hour * 4 + self.schedule.current_minute // 15
         for i, checkbox_label in enumerate(self.lbl_prices_check_box_list_today):
-            if i == current_index:
+            if i == self.schedule.current_period:
+                # Make current hour bold
+                logger.debug(f"Making period nr. {i} bold")
                 checkbox_label.configure(font=("Segoe UI", 9, "bold"))
             else:
+                # Rest are regular
                 checkbox_label.configure(font=("Segoe UI", 9, "normal"))
 
     def update_associated_device(self):

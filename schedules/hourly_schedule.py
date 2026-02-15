@@ -104,6 +104,7 @@ class HourlySchedule2days(Subject, StateSaver):
         """
         current_period = (hour_now * 4) + (minute_now // 15)
         if current_period != self.current_period:
+            logger.debug(f"Period changed new {current_period} old {self.current_period}")
             self.current_period = current_period
             self.notify_observers(HourlySchedule2days.event_name_period_changed)
 
@@ -113,10 +114,8 @@ class HourlySchedule2days(Subject, StateSaver):
         :return:
         """
         if self.device_list is None:
-            logger.debug("Device list is empty")
             return
         for dev in self.device_list:
-            logger.debug(f"Setting device CMD dev{dev} cmd{cmd}")
             # set all device auto cmds to true
             dev.set_auto_run(cmd)
 

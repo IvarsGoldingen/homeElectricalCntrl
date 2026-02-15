@@ -43,8 +43,9 @@ class Subject(ABC):
 
     def notify_observers(self, event_type: str, *args, **kwargs):
         if event_type in self._observers:
-
             for observer in self._observers[event_type]:
+                logger.debug(
+                    f"Notifying observers event_type {event_type}")
                 observer.handle_subject_event(event_type, *args, **kwargs)
 
 

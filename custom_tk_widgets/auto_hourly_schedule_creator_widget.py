@@ -48,7 +48,7 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
         self.lbl_max_total_cost, self.lbl_h_period_split, self.lbl_max_h, self.lbl_min_h, self.lbl_calc_h, \
             self.lbl_calc_min = None, None, None, None, None, None
         # widget text boxes for settings
-        self.txt_max_total_cost, self.txt_h_period_split, self.txt_max_h, self.txt_min_h, \
+        self.txt_max_total_cost, self.txt_period_split, self.txt_max_periods, self.txt_min_periods, \
             self.txt_calc_h, self.txt_calc_min = None, None, None, None, None, None
         # Labels for holding actual setting values
         self.lbl_max_total_cost_act, self.lbl_h_period_split_act, self.lbl_max_h_act, self.lbl_min_h_act, \
@@ -90,9 +90,9 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
 
     def set_parameters_from_user_input(self):
         max_total_str = self.txt_max_total_cost.get("1.0", "end-1c")
-        period_split_str = self.txt_h_period_split.get("1.0", "end-1c")
-        max_h_str = self.txt_max_h.get("1.0", "end-1c")
-        min_h_str = self.txt_min_h.get("1.0", "end-1c")
+        period_split_str = self.txt_period_split.get("1.0", "end-1c")
+        max_h_str = self.txt_max_periods.get("1.0", "end-1c")
+        min_h_str = self.txt_min_periods.get("1.0", "end-1c")
         calc_h_str = self.txt_calc_h.get("1.0", "end-1c")
         calc_min_str = self.txt_calc_min.get("1.0", "end-1c")
         try:
@@ -135,14 +135,14 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
         self.lbl_associated_schedule = Label(self, text="No schedules associated with creator")
         self.lbl_max_total_cost = Label(self, text="MAX TOTAL COST", width=self.LABEL_WIDTH)
         self.lbl_h_period_split = Label(self, text="SPLIT INTERVAL", width=self.LABEL_WIDTH)
-        self.lbl_max_h = Label(self, text="MAX H ON", width=self.LABEL_WIDTH)
-        self.lbl_min_h = Label(self, text="MIN H ON", width=self.LABEL_WIDTH)
+        self.lbl_max_h = Label(self, text="MAX PERIODS ON", width=self.LABEL_WIDTH)
+        self.lbl_min_h = Label(self, text="MIN PERIODS ON", width=self.LABEL_WIDTH)
         self.lbl_calc_h = Label(self, text="CALCULATION HOUR", width=self.LABEL_WIDTH)
         self.lbl_calc_min = Label(self, text="CALCULATION MINUTE", width=self.LABEL_WIDTH)
         self.txt_max_total_cost = Text(self, width=self.TEXT_BOX_WIDTH, height=self.TEXT_BOX_HEIGHT)
-        self.txt_h_period_split = Text(self, width=self.TEXT_BOX_WIDTH, height=self.TEXT_BOX_HEIGHT)
-        self.txt_max_h = Text(self, width=self.TEXT_BOX_WIDTH, height=self.TEXT_BOX_HEIGHT)
-        self.txt_min_h = Text(self, width=self.TEXT_BOX_WIDTH, height=self.TEXT_BOX_HEIGHT)
+        self.txt_period_split = Text(self, width=self.TEXT_BOX_WIDTH, height=self.TEXT_BOX_HEIGHT)
+        self.txt_max_periods = Text(self, width=self.TEXT_BOX_WIDTH, height=self.TEXT_BOX_HEIGHT)
+        self.txt_min_periods = Text(self, width=self.TEXT_BOX_WIDTH, height=self.TEXT_BOX_HEIGHT)
         self.txt_calc_h = Text(self, width=self.TEXT_BOX_WIDTH, height=self.TEXT_BOX_HEIGHT)
         self.txt_calc_min = Text(self, width=self.TEXT_BOX_WIDTH, height=self.TEXT_BOX_HEIGHT)
         self.lbl_max_total_cost_act = Label(self, text="0.00", width=self.TEXT_BOX_WIDTH)
@@ -153,10 +153,10 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
         self.lbl_min_h_act = Label(self, text="0", width=self.TEXT_BOX_WIDTH)
         self.lbl_calc_h_act = Label(self, text="0", width=self.TEXT_BOX_WIDTH)
         self.lbl_calc_min_act = Label(self, text="0", width=self.TEXT_BOX_WIDTH)
-        self.txt_max_total_cost.insert("1.0", "300.0")
-        self.txt_h_period_split.insert("1.0", "6")
-        self.txt_max_h.insert("1.0", "5")
-        self.txt_min_h.insert("1.0", "2")
+        self.txt_max_total_cost.insert("1.0", "0.3")
+        self.txt_period_split.insert("1.0", "24")
+        self.txt_max_periods.insert("1.0", "20")
+        self.txt_min_periods.insert("1.0", "8")
         self.txt_calc_h.insert("1.0", "16")
         self.txt_calc_min.insert("1.0", "50")
         self.btn_create_now = Button(self, text='CREATE NOW', command=self.generate_schedule_now,
@@ -177,9 +177,9 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
         self.lbl_calc_h.grid(row=6, column=0)
         self.lbl_calc_min.grid(row=7, column=0)
         self.txt_max_total_cost.grid(row=2, column=1)
-        self.txt_h_period_split.grid(row=3, column=1)
-        self.txt_max_h.grid(row=4, column=1)
-        self.txt_min_h.grid(row=5, column=1)
+        self.txt_period_split.grid(row=3, column=1)
+        self.txt_max_periods.grid(row=4, column=1)
+        self.txt_min_periods.grid(row=5, column=1)
         self.txt_calc_h.grid(row=6, column=1)
         self.txt_calc_min.grid(row=7, column=1)
         self.lbl_max_total_cost_act.grid(row=2, column=2)

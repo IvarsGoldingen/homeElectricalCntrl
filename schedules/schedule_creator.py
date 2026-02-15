@@ -1,4 +1,5 @@
 import datetime
+from typing import List, Tuple
 import heapq
 import logging
 import os
@@ -67,7 +68,7 @@ class ScheduleCreator:
         """
         logger.debug("********************************************************************************************")
         if period_split > 96:
-            logger.warning("Calculation period set larger than 24 hours")
+            logger.warning("Calculation period set larger than 96 periods")
             period_split = 96
         # get start hour now because calculation might take time, and when finished it might be the next hour
         if not prices_today or not prices_tomorrow:
@@ -133,35 +134,35 @@ class ScheduleCreator:
 
     @staticmethod
     def find_cheapest_periods_to_run_in(max_total_cost: float,
-                                        max_hours_to_run: int,
-                                        min_hours_to_run: int,
+                                        max_periods_to_run: int,
+                                        min_periods_to_run: int,
                                         upcoming_prices: list) -> [list]:
         """
         :param max_total_cost: maximum total cost the device is allowed to use
-        :param max_hours_to_run: what is the maximum number of on hours for the device to be on
-        :param min_hours_to_run: what is the minimum number of hours for the device to be on, This has higher priority
+        :param max_periods_to_run: what is the maximum number of on periods for the device to be on
+        :param min_periods_to_run: what is the minimum number of periods for the device to be on, This has higher priority
         than max_total_cost.
         :param upcoming_prices: list of upcomming electricity prices, each value meaning one hour
         :return: list of bools representing wether a device should be on or off for upcomming prices list
         """
         # Get the length of future price list because it can be shorter than the setting
-        hours_ahead_to_calculate = len(upcoming_prices)
+        periods_ahead_to_calculate = len(upcoming_prices)
         # How many on hours to consider
-        nr_of_on_hours = min(max_hours_to_run, hours_ahead_to_calculate)
+        nr_of_on_hours = min(max_periods_to_run, periods_ahead_to_calculate)
         logger.debug(f"Finding lowest price combo for prices: {upcoming_prices}")
         # Get the indicies and values for the cheapest prices in the list
-        indices, values = ScheduleCreator.find_n_smallest_items_in_list(upcoming_prices, nr_of_on_hours)
+        indices, values = ScheduleCreator.find_n_smallest_items_in_list_v2(upcoming_prices, nr_of_on_hours)
         while nr_of_on_hours > 0:
             # Get the total cost of running the lowest hours
             total_cost = sum(values)
             logger.debug(f"Lowest cost of running {nr_of_on_hours} hours is {total_cost}")
-            if total_cost <= max_total_cost or nr_of_on_hours == min_hours_to_run:
+            if total_cost <= max_total_cost or nr_of_on_hours == min_periods_to_run:
                 # Found best combination of hours to run in
                 # Total price is below limit or it is not possible to reduce hours to run for because of
                 # min_hours_to_run
                 # Return a list representing future hours, where each bool represents whether a device should be on or
                 # off
-                return [True if x in indices else False for x in range(hours_ahead_to_calculate)]
+                return [True if x in indices else False for x in range(periods_ahead_to_calculate)]
             # The cost was too high, run for one hour less.
             # remove the largest value of the list and try again
             index_of_largest = values.index(max(values))
@@ -170,7 +171,7 @@ class ScheduleCreator:
             nr_of_on_hours -= 1
         logger.debug("No valid combinations")
         # Was not possible to find cheap enough combination
-        false_list = [False] * hours_ahead_to_calculate
+        false_list = [False] * periods_ahead_to_calculate
         return false_list
 
     @staticmethod
@@ -191,27 +192,81 @@ class ScheduleCreator:
         return list(indices), list(values)
 
     @staticmethod
+    def find_n_smallest_items_in_list_v2(items: List [float], n: int) -> Tuple[List[int], List[float]]:
+        """
+        Find n smallest values such that they form:
+          - either one contiguous chunk
+          - or two contiguous chunks separated by at least 2 elements
+
+        :param items: list of values
+        :param n: total number of elements to select
+        :return: (indices list, values list)
+        """
+        length = len(items)
+        if n <= 0 or n > length:
+            return [], []
+        # ----- Prefix sum for O(1) range sum -----
+        prefix = [0]
+        for value in items:
+            prefix.append(prefix[-1] + value)
+        def range_sum(start: int, end: int) -> float:
+            return prefix[end] - prefix[start]
+        best_sum = float("inf")
+        best_indices = []
+        # ==========================================================
+        # 1️⃣ Check single chunk solution
+        # ==========================================================
+        for start in range(length - n + 1):
+            end = start + n
+            s = range_sum(start, end)
+
+            if s < best_sum:
+                best_sum = s
+                best_indices = list(range(start, end))
+        # ==========================================================
+        # 2️⃣ Check two-chunk solution (with >=2 gap)
+        # ==========================================================
+        for len1 in range(1, n):
+            len2 = n - len1
+            for start1 in range(length - len1 + 1):
+                end1 = start1 + len1
+                # second chunk must start at least 2 elements after first ends
+                min_start2 = end1 + 2
+                for start2 in range(min_start2, length - len2 + 1):
+                    end2 = start2 + len2
+                    s = range_sum(start1, end1) + range_sum(start2, end2)
+                    if s < best_sum:
+                        best_sum = s
+                        best_indices = (
+                                list(range(start1, end1)) +
+                                list(range(start2, end2))
+                        )
+        values = [items[i] for i in best_indices]
+        return best_indices, values
+
+
+    @staticmethod
     def get_list_of_upcoming_prices(prices_today: DayPrices,
                                     prices_tomorrow: DayPrices,
                                     periods_ahead_to_calculate: int) -> [int, list]:
         """
         Get a list of the upcoming prices from today's and tomorrow's price dictionarries
-        :param prices_today: dictionary with keys 0...23 holding electricity prices for each hour today
-        :param prices_tomorrow: dictionary with keys 0...23 holding electricity prices for each hour tomorrow
-        :param periods_ahead_to_calculate: for how many hours ahead to get the prices
+        :param prices_today: dictionary with keys 0...95 holding electricity prices for each period today
+        :param prices_tomorrow: dictionary with keys 0...95 holding electricity prices for each period tomorrow
+        :param periods_ahead_to_calculate: for how many periods ahead to get the prices
         :return:
         """
         # get the number of the next hour, will be needed when returning schedule dictionaries
         next_period_number = (datetime.datetime.now().hour * 4) + (datetime.datetime.now().minute//15) + 1
         logger.debug(f"Schedule next period is {next_period_number}")
         # How many prices for each hour from today's dictionary
-        periods_from_today = min(periods_ahead_to_calculate, 96 - next_period_number, 96)
-        # How many prices for each hour from tomorrow's dictionary
-        periods_from_tomorrow = min(periods_ahead_to_calculate - periods_from_today, 24, 96)
+        periods_from_today = min(periods_ahead_to_calculate, 96 - next_period_number)
+        # How many prices from tomorrow's dictionary
+        periods_from_tomorrow = min(periods_ahead_to_calculate - periods_from_today, 96)
         # list of future prices from today
         today_periods = [prices_today.get_price_by_period_number(next_period_number + i) for i in range(periods_from_today)]
         # list of future prices from tomorrow
-        tomorrow_periods = [prices_tomorrow.get_price_by_period_number(next_period_number + i) for i in range(periods_from_tomorrow)]
+        tomorrow_periods = [prices_tomorrow.get_price_by_period_number(i) for i in range(periods_from_tomorrow)]
         # combine todays and tomorrows list
         future_periods = today_periods + tomorrow_periods
         return next_period_number, future_periods
