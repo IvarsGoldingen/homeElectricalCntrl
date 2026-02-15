@@ -104,10 +104,10 @@ class AutoHourlyScheduleCreatorWidget(tk.Frame):
             min_h_int = int(min_h_str)
             calc_h_int = int(calc_h_str)
             calc_min_int = int(calc_min_str)
-            self.auto_schedule_creator.set_parameters(period_split_h=period_split_int,
+            self.auto_schedule_creator.set_parameters(period_split=period_split_int,
                                                       max_total_cost=max_total_float,
-                                                      max_hours_to_run=max_h_int,
-                                                      min_hours_to_run=min_h_int,
+                                                      max_periods_to_run=max_h_int,
+                                                      min_periods_to_run=min_h_int,
                                                       calculation_time_h=calc_h_int,
                                                       calculation_time_min=calc_min_int)
             self.lbl_title.config(text="SCHEDULE CREATOR")

@@ -1,6 +1,8 @@
 import schedule
 import logging
 import os
+
+from helpers.price_objects import DayPrices
 from schedules.hourly_schedule import HourlySchedule2days
 from schedules.schedule_creator import ScheduleCreator
 from typing import Callable, Dict, Tuple
@@ -24,17 +26,7 @@ logger.addHandler(file_handler)
 
 
 def test():
-    fake_prices_today = {0: 1.0, 1: 2.82, 2: 2.52, 3: 39.6, 4: 75.06, 5: 92.91, 6: 104.52, 7: 150.03, 8: 190.85,
-                         9: 122.88,
-                         10: 104.39, 11: 88.69, 12: 81.28, 13: 90.18, 14: 88.63, 15: 90.23, 16: 93.46, 17: 101.96,
-                         18: 104.0,
-                         19: 140.09, 20: 200.09, 21: 93.49, 22: 7.18, 23: 1.34}
-    fake_prices_tomorrow = {0: 1.0, 1: 30.0, 2: 3.0, 3: 40.0, 4: 5.0, 5: 6.0, 6: 7.0, 7: 8.0, 8: 9.0, 9: 10.0,
-                            10: 104.39, 11: 88.69, 12: 81.28, 13: 90.18, 14: 88.63, 15: 90.23, 16: 93.46, 17: 101.96,
-                            18: 104.0,
-                            19: 0.2, 20: 200.09, 21: 93.49, 22: 7.18, 23: 1.34}
-    test = AutoScheduleCreator(get_prices_method=lambda: (fake_prices_today, fake_prices_tomorrow))
-    test.set_scheduled_times()
+    pass
 
 
 class AutoScheduleCreator(StateSaver):
@@ -43,17 +35,17 @@ class AutoScheduleCreator(StateSaver):
     """
 
     # Auto schedule create periods allowed in hours
-    ALLOWED_PERIODS = [6, 8, 12, 24]
+    ALLOWED_PERIODS = [24, 32, 48, 96]
     # At what minute is the schedule created - 23:55, 15:55 ... for 8 hour period
     MINUTE_START_AT = 55
 
     def __init__(self,
-                 get_prices_method: Callable[[], Tuple[Dict, Dict]],
+                 get_prices_method: Callable[[], Tuple[DayPrices, DayPrices]],
                  hourly_schedule: HourlySchedule2days = None,
-                 period_split_h: int = 6,
+                 period_split: int = 24,
                  max_total_cost: float = 300.0,
-                 max_hours_to_run: int = 5,
-                 min_hours_to_run: int = 2,
+                 max_periods_to_run: int = 20,
+                 min_periods_to_run: int = 8,
                  calculation_time_h: int = 16,
                  calculation_time_min: int = 50,
                  name: str = "Auto schedule creator",
@@ -62,14 +54,14 @@ class AutoScheduleCreator(StateSaver):
         self.name = name
         self._get_prices_method = get_prices_method
         self._auto_create_enabled = True
-        self._auto_create_period = 24
+        self._auto_create_period = 96
         self._hourly_schedule = hourly_schedule
         self._max_total_cost = max_total_cost
-        self._max_hours_to_run = max_hours_to_run
-        self._min_hours_to_run = min_hours_to_run
+        self._max_hours_to_run = max_periods_to_run
+        self._min_hours_to_run = min_periods_to_run
         self._calculation_time_h = calculation_time_h
         self._calculation_time_min = calculation_time_min
-        self._period_split_h = period_split_h
+        self._period_split = period_split
         # Set default values initially, then attempt to load saved state
         self.load_state()
         # Activate auto create
@@ -83,16 +75,16 @@ class AutoScheduleCreator(StateSaver):
             logger.debug("Auto create disabled")
 
     def set_parameters(self,
-                       period_split_h: int = 8,
+                       period_split: int = 8,
                        max_total_cost: float = 50.0,
-                       max_hours_to_run: int = 4,
-                       min_hours_to_run: int = 0,
+                       max_periods_to_run: int = 4,
+                       min_periods_to_run: int = 0,
                        calculation_time_h: int = 16,
                        calculation_time_min: int = 50):
-        self._period_split_h = period_split_h
+        self._period_split = period_split
         self._max_total_cost = max_total_cost
-        self._max_hours_to_run = max_hours_to_run
-        self._min_hours_to_run = min_hours_to_run
+        self._max_hours_to_run = max_periods_to_run
+        self._min_hours_to_run = min_periods_to_run
         self._calculation_time_h = calculation_time_h
         self._calculation_time_min = calculation_time_min
         if self._auto_create_enabled:
@@ -103,7 +95,7 @@ class AutoScheduleCreator(StateSaver):
         return self._hourly_schedule.name
 
     def get_parameters(self):
-        return self._period_split_h, self._max_total_cost, self._max_hours_to_run, self._min_hours_to_run, \
+        return self._period_split, self._max_total_cost, self._max_hours_to_run, self._min_hours_to_run, \
             self._calculation_time_h, self._calculation_time_min
 
     def set_auto_create_enabled(self, off_on: bool):
@@ -135,10 +127,10 @@ class AutoScheduleCreator(StateSaver):
             prices_today=prices_today,
             prices_tomorrow=prices_tomorrow,
             max_total_cost=self._max_total_cost,
-            period_h=self._period_split_h,
-            hours_ahead_to_calculate=self._auto_create_period,
-            max_hours_to_run=self._max_hours_to_run,
-            min_hours_to_run=self._min_hours_to_run)
+            period_split=self._period_split,
+            periods_ahead_to_calculate=self._auto_create_period,
+            max_periods_to_run=self._max_hours_to_run,
+            min_periods_to_run=self._min_hours_to_run)
         if self._hourly_schedule:
             self._hourly_schedule.set_schedule_full_day(today_tomorrow=False, schedule=schedule_today)
             self._hourly_schedule.set_schedule_full_day(today_tomorrow=True, schedule=schedule_tomorrow)
@@ -147,15 +139,15 @@ class AutoScheduleCreator(StateSaver):
             logger.warning(f"Today {schedule_today} Tomorrow {schedule_tomorrow}")
 
     def check_period(self):
-        if self._period_split_h in self.ALLOWED_PERIODS:
+        if self._period_split in self.ALLOWED_PERIODS:
             return
         # Get the closest allowed period length
-        self._period_split_h = min(self.ALLOWED_PERIODS, key=lambda x: abs(x - self._period_split_h))
-        logger.debug(f"Changed period to {self._period_split_h}")
+        self._period_split = min(self.ALLOWED_PERIODS, key=lambda x: abs(x - self._period_split))
+        logger.debug(f"Changed period to {self._period_split}")
 
     def save_state(self):
         state_to_save = {
-            "period_split_h": self._period_split_h,
+            "period_split_h": self._period_split,
             "max_total_cost": self._max_total_cost,
             "max_hours_to_run": self._max_hours_to_run,
             "min_hours_to_run": self._min_hours_to_run,
@@ -174,7 +166,7 @@ class AutoScheduleCreator(StateSaver):
             return
         try:
             # Dictionary keys are read as strings from JSON, comvert them to ints
-            self._period_split_h = loaded_state["period_split_h"]
+            self._period_split = loaded_state["period_split_h"]
             self._max_total_cost = loaded_state["max_total_cost"]
             self._max_hours_to_run = loaded_state["max_hours_to_run"]
             self._min_hours_to_run = loaded_state["min_hours_to_run"]

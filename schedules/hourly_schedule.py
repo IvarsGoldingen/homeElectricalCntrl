@@ -15,7 +15,7 @@ logger.setLevel(settings.BASE_LOG_LEVEL)
 # Console debug
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
+stream_handler.setLevel(logging.DEBUG)
 logger.addHandler(stream_handler)
 
 # File logger
@@ -28,9 +28,10 @@ class HourlySchedule2days(Subject, StateSaver):
     """
     Class for controlling devices in an hourly schedule for today and tomorrow
     """
-
+    #Schedule changed
     event_name_schedule_change = "schedule_changed"
     event_name_new_device_associated = "new_device_associated"
+    # Next 15 minutes started, move indication in UI of active period
     event_name_period_changed = "period_change"
 
     def __init__(self, name: str, state_file_loc: str = "C:\\py_related\\home_el_cntrl\\state"):
@@ -92,7 +93,8 @@ class HourlySchedule2days(Subject, StateSaver):
         self.check_if_new_day()
         hour_now = datetime.datetime.now().hour
         minute_now = datetime.datetime.now().minute
-        expected_state = self.schedule_today[(hour_now * 4) + (minute_now//15)]
+        expected_period_nr = (hour_now * 4) + (minute_now//15)
+        expected_state = self.schedule_today[expected_period_nr]
         self.set_device_cmds(expected_state)
         self.check_period_change_change(hour_now, minute_now)
 
@@ -114,6 +116,7 @@ class HourlySchedule2days(Subject, StateSaver):
             logger.debug("Device list is empty")
             return
         for dev in self.device_list:
+            logger.debug(f"Setting device CMD dev{dev} cmd{cmd}")
             # set all device auto cmds to true
             dev.set_auto_run(cmd)
 
@@ -182,7 +185,3 @@ class HourlySchedule2days(Subject, StateSaver):
         self.schedule_today.update(self.schedule_tomorrow)
         # set tomorrow's schedule all to false
         self.schedule_tomorrow = {key: False for key in self.schedule_tomorrow}
-
-
-if __name__ == '__main__':
-    test()

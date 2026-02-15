@@ -24,7 +24,7 @@ logger.addHandler(file_handler)
 A Subject and Observer classes for implementing the observer pattern.
 Example use cases:
 A device(plug) would be the subject. The observer for it would be a widget in the UI. When both objects are created
-the widget is registered to the plug. Any change od the device would be shown in UI.
+the widget is registered to the plug. Any change on the device would be shown in UI.
 """
 
 
@@ -43,6 +43,7 @@ class Subject(ABC):
 
     def notify_observers(self, event_type: str, *args, **kwargs):
         if event_type in self._observers:
+
             for observer in self._observers[event_type]:
                 observer.handle_subject_event(event_type, *args, **kwargs)
 
@@ -54,6 +55,7 @@ class SimpleSubject(Subject):
 
 class DeviceSubject(Subject):
     def device_notify(self, event_name: str, device_name: str, device_type: DeviceType):
+        logger.debug(f"Notifying device event_name {event_name}, device_name{device_name}, device_type {device_type}")
         self.notify_observers(event_name, device_name=device_name, device_type=device_type)
 
 

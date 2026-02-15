@@ -35,6 +35,9 @@ class DayPrices:
     def get_price(self, hour: int, quarter: int) -> float:
         return self.hours[hour].get_price(quarter)
 
+    def get_price_by_period_number(self, period_nr:int) -> float:
+        return self.hours[period_nr//4].get_price(period_nr%4)
+
     def load_from_flat_list(self, flat_prices: list[float]):
         """
         Populate all hour/quarter prices from a list of 96 values.

@@ -195,6 +195,7 @@ class MainUIClass(Tk, Observer):
         self.lbl_status.config(text=new_text, fg=txt_color)
 
     def setup_schedules(self) -> None:
+        logger.debug("Setting schedules up from file")
         self.schedule_list = get_schedule_list_from_file(get_prices_method=self.price_mngr.get_prices_today_tomorrow,
                                                          dev_list=self.dev_list,
                                                          file_path=os.path.join(settings.SCH_CONFIG_FILE_LOCATION,# type: ignore

@@ -156,14 +156,15 @@ class Device(DeviceSubject, StateSaver):
             # device in manual mode, auto control not possible
             return
         if off_on != self._man_run:
-            # check with _man_run because the final state is written in that
+            # Write cmd in auto run
             self._auto_run = off_on
+            # _man_run used for actual CMD. Chekc if device not blocked.
+            self._man_run = self._block_check(self._auto_run)
+            # Execute turning on or off
+            self._turn_device_off_on(self._man_run)
+            self.save_state()
             # notify observers only if state changes
             self.device_notify(self.event_name_status_changed, self.name, self.device_type)
-            self.save_state()
-            # write same to man run so when switching from auto to man does not change device state
-            self._man_run = self._block_check(self._auto_run)
-            self._turn_device_off_on(self._man_run)
 
     def get_status(self) -> int:
         """

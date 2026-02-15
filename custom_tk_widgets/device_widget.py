@@ -1,9 +1,27 @@
 from functools import partial
+import os
 import tkinter as tk
 from tkinter import Label, Button, font
 from devices.device import Device
 from helpers.observer_pattern import Observer
+import logging
+import settings
 
+# Setup logging
+log_formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
+logger = logging.getLogger(__name__)
+logger.setLevel(settings.BASE_LOG_LEVEL)
+# Console debug
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(log_formatter)
+stream_handler.setLevel(settings.CONSOLE_LOG_LEVEL)
+logger.addHandler(stream_handler)
+
+# File logger
+file_handler = logging.FileHandler(os.path.join("../logs", "device_widget.log"))
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(settings.FILE_LOG_LEVEL)
+logger.addHandler(file_handler)
 
 class DeviceWidget(tk.Frame, Observer):
     """
@@ -51,9 +69,11 @@ class DeviceWidget(tk.Frame, Observer):
         self.btn_man_off.grid(row=3, column=1)
 
     def handle_subject_event(self, event_type: str, *args, **kwargs):
+        logger.debug(f"Device widget received event: {event_type}")
         self.update_widget()
 
     def update_widget(self):
+        logger.debug(f"Updating widget {self.device.name}")
         self.update_status_label()
         self.update_btn_colors()
 

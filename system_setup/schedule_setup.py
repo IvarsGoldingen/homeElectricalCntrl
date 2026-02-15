@@ -64,6 +64,7 @@ def get_schedule_list_from_file(get_prices_method: Callable[[], tuple[dict, dict
     :param file_path: Path of schedule file
     :return: List of Schedule objects defined in the device file
     """
+    logger.debug("get_schedule_list_from_file")
     sch_dic_list = get_schedule_json_from_file(file_path)
     sch_list = get_sch_list_from_dic_list(sch_dic_list, get_prices_method, dev_list)
     return sch_list
@@ -78,11 +79,14 @@ def get_sch_list_from_dic_list(sch_dic_list: list[dict],
     :param dev_list: list of system devices. To be assinged to schedules created here.
     :return: List of Schedule objects defined in the device file
     """
+    logger.debug("get_sch_list_from_dic_list")
     sch_list: list = []
     for sch_dic in sch_dic_list:
         if sch_dic["type"] == ScheduleType.HOURLY_SCHEDULE_2_DAYS.name:
             sch_2d = HourlySchedule2days(name=sch_dic["name"])
+            logger.debug(f"Got 2day schedule {sch_2d}")
             assigned_dev_name = sch_dic[ASSIGNED_DEV_KEY]
+            logger.debug(f"Assigned device name {assigned_dev_name}")
             _assign_dev_to_sch_by_name(sch_2d, assigned_dev_name, dev_list)
             sch_list.append(sch_2d)
         elif sch_dic["type"] == ScheduleType.AUTO_SCHEDULE_CREATOR.name:
