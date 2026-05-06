@@ -110,7 +110,7 @@ class MyMqttClient(Subject):
     def handle_msgs_from_mqtt_client(self):
         while not self.queue_from_mqtt_thread.empty():
             msg = self.queue_from_mqtt_thread.get()
-            logger.debug(f"MSG from mqtt thread {msg}")
+            #logger.debug(f"MSG from mqtt thread {msg}")
             if msg["msg_type"] == self.mqtt_cl_thread.MsgType.MQTT_CLIENT_STATUS_CHANGE:
                 # The mqtt client has connected to or disconnected from the broker
                 self.status = msg["data"]

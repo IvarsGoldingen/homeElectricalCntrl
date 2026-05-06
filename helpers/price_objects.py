@@ -28,6 +28,7 @@ class DayPrices:
     def __init__(self, price_date: date):
         self.date = price_date            # <-- Holds the date of prices
         self.hours = [HourPrice(hour) for hour in range(24)]
+        self.all_day_prices_available = False
 
     def set_price(self, hour: int, quarter: int, price: float):
         self.hours[hour].set_price(quarter, price)
@@ -50,6 +51,8 @@ class DayPrices:
             hour = index // 4
             quarter = index % 4
             self.set_price(hour, quarter, price)
+        self.all_day_prices_available = True
+
 
     def __repr__(self):
         return f"Prices for {self.date}:\n" + "\n".join(str(h) for h in self.hours)

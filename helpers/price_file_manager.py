@@ -2,9 +2,7 @@ import os
 import datetime
 import logging
 import time
-import random
 import re
-from xmlrpc.client import DateTime
 
 from helpers.get_nordpool import NordpoolGetter
 from helpers.observer_pattern import Subject
@@ -35,13 +33,8 @@ def test():
     # day_prices.load_from_flat_list(random_real_list)
     mngr = PriceFileManager(test_loc)
     mngr.loop()
+    print(mngr.check_if_tomorrows_prices_in_file())
     today, tomorrow = mngr.get_prices_today_tomorrow()
-    print(today)
-    print(tomorrow)
-    # mngr.create_files_from_nordpool_price_list(day_prices)
-    # mngr.create_files_from_nordpool_price_list(random_real_list, date)
-    # mngr.delete_old_incorrect_price_files()
-    # prices_today, prices_tomorrow = mngr.get_prices_today_tomorrow()
 
 
 class PriceFileManager(Subject):
@@ -69,6 +62,8 @@ class PriceFileManager(Subject):
         self.tomorrow_prices_available = False
         # For limitting np polls
         self.time_of_last_np_poll = 0
+        self.tommorow_prices_state = -1
+        self.tommorow_prices_state_old = -1
 
     def loop(self):
         """
@@ -78,6 +73,9 @@ class PriceFileManager(Subject):
         """
         self.check_if_new_day()
         self.check_for_tomorrows_prices()
+        if self.tommorow_prices_state != self.tommorow_prices_state_old:
+            logger.info(f"Tommorrow price state changed from {self.tommorow_prices_state_old} to {self.tommorow_prices_state}")
+            self.tommorow_prices_state_old = self.tommorow_prices_state
 
     def check_if_new_day(self):
         """
@@ -122,17 +120,21 @@ class PriceFileManager(Subject):
 
     def check_for_tomorrows_prices(self):
         if self.tomorrow_prices_available:
+            self.tommorow_prices_state = 0
             # tomorrow's prices available, no need to do anything
             return
         if not self.check_tomorrow_could_be_available_time():
+            self.tommorow_prices_state = 1
             # no prices available but also too early to look for
             return
         if self.check_if_tomorrows_prices_in_file():
+            self.tommorow_prices_state = 2
             # Tomorrow's prices availabel in file
             logger.debug("Tomorrow's prices available in file")
             self.notify_observers(self.event_name_prices_changed)
             return
         if self.get_prices_tomorrow_from_np():
+            self.tommorow_prices_state = 3
             logger.info("Got prices from Nordpool")
             self.notify_observers(self.event_name_prices_changed)
             self.notify_observers(self.event_name_new_prices)
@@ -154,7 +156,7 @@ class PriceFileManager(Subject):
         prices_tomorrow = self.get_prices_tomorrow_from_file()
         if not prices_tomorrow:
             return False
-        if len(prices_tomorrow.hours) < (24 - self.NORDPOOL_PRICE_OFSET_HOURS):
+        if not prices_tomorrow.all_day_prices_available:
             self.tomorrow_prices_available = False
             return False
         # Tomorrows prices in file
@@ -194,7 +196,7 @@ class PriceFileManager(Subject):
         prices = DayPrices(date)
         if os.path.exists(file_path):
             with open(file_path, 'r') as file:
-                for line in file:
+                for line_nr, line in enumerate(file):
                     line = line.strip()
                     # Match "13: 10.5, 10.8, 11.0, 10.9"
                     match = re.match(r"(\d+):\s*(.*)", line)
@@ -209,6 +211,9 @@ class PriceFileManager(Subject):
                         if 0 <= current_hour < 24:
                             for q, v in enumerate(values):
                                 prices.set_price(current_hour, q, v)
+                        if line_nr == 23:
+                            # Full day of prices available
+                            prices.all_day_prices_available = True
                 return prices
         return None
 

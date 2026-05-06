@@ -90,7 +90,6 @@ class ShellyEnergyMeter3em(MqttDevice):
     Mqtt must be enabled from the webservice of the device
 
     TODO:
-    handle UI, create widget
     data logging
     """
 
@@ -207,7 +206,8 @@ class ShellyEnergyMeter3em(MqttDevice):
                 # Check for keys that identify energy value data
                 new_data = self.handle_energy_data(params)
             else:
-                logger.debug(f"Unused data received {data}")
+                #logger.debug(f"Unused data received {data}")
+                pass
         except json.JSONDecodeError as e:
             logger.error(f"JSON decoding error: {e}")
         if new_data:
