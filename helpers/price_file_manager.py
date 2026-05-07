@@ -4,6 +4,7 @@ import logging
 import time
 import re
 
+from enum import Enum, auto
 from helpers.get_nordpool import NordpoolGetter
 from helpers.observer_pattern import Subject
 import settings
@@ -36,6 +37,12 @@ def test():
     print(mngr.check_if_tomorrows_prices_in_file())
     today, tomorrow = mngr.get_prices_today_tomorrow()
 
+class PriceState(Enum):
+    UNKNOWN = auto()
+    AVAILABLE = auto()
+    NOT_AVAILABLE_TOO_EARLY = auto()
+    AVAILABLE_IN_FILE = auto()
+    AVAILABLE_FROM_NP = auto()
 
 class PriceFileManager(Subject):
     """
@@ -62,8 +69,8 @@ class PriceFileManager(Subject):
         self.tomorrow_prices_available = False
         # For limitting np polls
         self.time_of_last_np_poll = 0
-        self.tommorow_prices_state = -1
-        self.tommorow_prices_state_old = -1
+        self.tommorow_prices_state = PriceState.UNKNOWN
+        self.tommorow_prices_state_old = PriceState.UNKNOWN
 
     def loop(self):
         """
@@ -85,13 +92,14 @@ class PriceFileManager(Subject):
         if actual_today == self.datetime_now:
             # date has not changed
             return
-        if self.datetime_now:
-            # Check if this is none, this is the first cycle for the application
-            # If this exists and not equal to actual today, its a new day
-            logger.debug("New day, tomorrows prices cannot be available")
-            # Tomorrows prices can not be available since new day just now
-            # Check if datetime_now is not None, that would mean first cycle
-            self.tomorrow_prices_available = False
+        # if self.datetime_now:
+        #     # Check if this is none, this is the first cycle for the application
+        #     # If this exists and not equal to actual today, its a new day
+        #     logger.debug("New day, tomorrows prices cannot be available")
+        #     # Tomorrows prices can not be available since new day just now
+        #     # Check if datetime_now is not None, that would mean first cycle
+        #     self.tomorrow_prices_available = False
+        self.tomorrow_prices_available = False
         # new day
         self.delete_old_incorrect_price_files()
         self.datetime_now = actual_today
