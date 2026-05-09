@@ -23,6 +23,7 @@ from custom_tk_widgets.shelly_plus_widget import ShellyPlusWidget
 from custom_tk_widgets.shelly_plug_url_widget import ShellyPlugUrlWidget
 from custom_tk_widgets.shelly_plus_pm_widget import ShellyPlusPmWidget
 from custom_tk_widgets.schedule_2_days_widget import Schedule2DaysWidget
+from custom_tk_widgets.scrollable_frame import  ScrollableFrame
 from schedules.hourly_schedule import HourlySchedule2days
 from schedules.auto_schedule_creator import AutoScheduleCreator
 from schedules.daily_timed_schedule import DailyTimedSchedule
@@ -220,6 +221,7 @@ class MainUIClass(Tk, Observer):
     def set_up_ui(self) -> None:
         # Set up user interface
         self.protocol("WM_DELETE_WINDOW", self.save_and_finish)
+        self.state("zoomed")
         self.title('Home control')
         self.prepare_ui_elements()
         self.place_ui_elements()
@@ -239,10 +241,13 @@ class MainUIClass(Tk, Observer):
 
     # noinspection PyAttributeOutsideInit
     def prepare_ui_elements(self) -> None:
+        # Make app scrollable
+        self.scrollable = ScrollableFrame(self)
+        self.scrollable.pack(fill="both", expand=True)
         # Create UI elements
-        self.lbl_status = Label(self, text='MQTT STATUS')
+        self.lbl_status = Label(self.scrollable.inner, text='MQTT STATUS')
         # Buttons for debuggin or extra features
-        self.frame_extra_btns = Frame(self)
+        self.frame_extra_btns = Frame(self.scrollable.inner)
         self.btn_1 = Button(self.frame_extra_btns, text='OPEN PRICE FILE FOLDER',
                             command=self.open_price_file_folder, width=self.BTN_WIDTH)
         self.btn_2 = Button(self.frame_extra_btns, text='TEST 2', command=self.test_btn, width=self.BTN_WIDTH)
@@ -255,7 +260,7 @@ class MainUIClass(Tk, Observer):
 
     # noinspection PyAttributeOutsideInit
     def setup_device_widgets_from_list(self):
-        self.frame_devices = Frame(self)
+        self.frame_devices = Frame(self.scrollable.inner)
         # Store all widgets in a list to place in one TKinter frame
         self.dev_widgets = []
         for dev in self.dev_list:
@@ -293,10 +298,10 @@ class MainUIClass(Tk, Observer):
     def setup_schedule_widgets_from_list(self):
         # Create schedule widgets and register them as listeners for desired schedules
         self.sch_widgets = []
-        self.frame_widgets_bottom = Frame(self)
+        self.frame_widgets_bottom = Frame(self.scrollable.inner)
         for sch in self.schedule_list:
             if isinstance(sch, HourlySchedule2days):
-                hourly_2day_widget = Schedule2DaysWidget(parent=self,
+                hourly_2day_widget = Schedule2DaysWidget(parent=self.scrollable.inner,
                                                          schedule=sch,
                                                          display_price_per_kwh=MainUIClass.DISPLAY_PRICE_PER_KWH)
                 sch.register(hourly_2day_widget, HourlySchedule2days.event_name_schedule_change)

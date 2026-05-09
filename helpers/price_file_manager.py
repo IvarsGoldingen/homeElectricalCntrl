@@ -92,13 +92,6 @@ class PriceFileManager(Subject):
         if actual_today == self.datetime_now:
             # date has not changed
             return
-        # if self.datetime_now:
-        #     # Check if this is none, this is the first cycle for the application
-        #     # If this exists and not equal to actual today, its a new day
-        #     logger.debug("New day, tomorrows prices cannot be available")
-        #     # Tomorrows prices can not be available since new day just now
-        #     # Check if datetime_now is not None, that would mean first cycle
-        #     self.tomorrow_prices_available = False
         self.tomorrow_prices_available = False
         # new day
         self.delete_old_incorrect_price_files()
