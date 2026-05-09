@@ -145,6 +145,9 @@ class MainUIClass(Tk, Observer):
                     dev.device_type == DeviceType.URL_CONTROLLED_SHELLY_PLUG:
                 # Register state changes for devices
                 dev.register(self.data_logger, Device.event_name_actual_state_changed)
+            elif dev.device_type == DeviceType.SHELLY_PRO_3EM:
+                # Do not log error for devices that should not be logged
+                pass
             else:
                 logger.error(f"Logging not implemented for {dev.device_type} in method setup_db_logger")
 
